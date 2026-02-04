@@ -76,7 +76,7 @@
       border:0;
       border-radius: 12px;
       padding: 11px 14px;
-      font-weight: 800;
+      font-weight: 900;
       cursor:pointer;
       transition: transform .06s ease, filter .15s ease, background .15s ease;
       box-shadow: var(--shadow2);
@@ -118,7 +118,7 @@
       border:1px solid var(--line);
       background:#fff;
       cursor:pointer;
-      font-weight: 900;
+      font-weight: 950;
       color: var(--text);
       box-shadow: var(--shadow2);
       user-select:none;
@@ -145,12 +145,12 @@
     }
     .cardTitle{
       display:flex; align-items:center; gap:10px;
-      font-weight: 950; font-size: 14px; letter-spacing:.2px; margin:0;
+      font-weight: 1000; font-size: 14px; letter-spacing:.2px; margin:0;
     }
     .pill{
       font-size:12px; padding: 4px 10px; border-radius: 999px;
       background: var(--soft); border:1px solid var(--line);
-      color: var(--muted); font-weight: 900;
+      color: var(--muted); font-weight: 950;
     }
     .meta{
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -191,7 +191,7 @@
       <div class="title">
         <h1>SIMAP — Itens Remuneratórios</h1>
         <p class="subtitle">
-          Consulte via proxy (Vercel) e veja códigos <b>faltantes</b> (1000–1999 / 2000–2999), <b>vazios</b> e pesquise termos como “INSS” em tempo real.
+          Carrega via proxy (Vercel), mostra faltantes (1000–1999 / 2000–2999), vazios e pesquisa “INSS” em tempo real.
         </p>
       </div>
 
@@ -212,7 +212,7 @@
     </header>
 
     <div class="hint">
-      Regras: <b>1000–1999</b> Prefeitura · <b>2000–2999</b> Câmara · Campo do código: <code>codigo_item</code>. Vazios/ inválidos sempre aparecem.
+      Regras: <b>1000–1999</b> Prefeitura · <b>2000–2999</b> Câmara · Campo: <code>codigo_item</code>.
     </div>
 
     <div id="log" class="log"></div>
@@ -361,7 +361,6 @@
   }
   function resetLog(){ logEl.innerHTML = ""; }
 
-  // municipio filter
   function normalizeText(s) {
     return (s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
@@ -387,7 +386,6 @@
   municipioSearch.addEventListener("input", () => { clearTimeout(munTimer); munTimer = setTimeout(filterMunicipios, 90); });
   municipioSearch.addEventListener("keydown", (e) => { if (e.key === "Enter") municipioSelect.focus(); });
 
-  // analyze
   function digitsOnly(s){ return (s ?? "").toString().replace(/\D+/g, ""); }
   function normalizeApi(payload){
     if (payload?.rsp && Array.isArray(payload.rsp._content)) return payload.rsp._content;
@@ -453,7 +451,6 @@
     `;
   }
 
-  // download
   function buildReportTxt(r) {
     const lines = [];
     lines.push(`MUNICIPIO: ${r.municipio}`);
@@ -483,7 +480,6 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  // tabs
   function setTab(which) {
     const isF = which === "faltantes";
     tabFaltantes.classList.toggle("hidden", !isF);
@@ -494,7 +490,6 @@
   tabFaltantesBtn.addEventListener("click", () => setTab("faltantes"));
   tabPesquisarBtn.addEventListener("click", () => setTab("pesquisar"));
 
-  // search
   function buildSearchIndex(rows){ rowsSearchIndex = rows.map(row => ({ row, haystack: JSON.stringify(row).toLowerCase() })); }
   function renderSearchRows(rows) {
     if (!rows.length) {
@@ -527,34 +522,6 @@
   searchLimit.addEventListener("input", scheduleSearch);
   btnLimparBusca.addEventListener("click", () => { searchInput.value=""; doSearchNow(); });
 
-  // ✅ JSON ROBUSTO (com clone)
-  async function fetchJsonRobusto(url) {
-    const resp = await fetch(url);
-
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => "");
-      throw new Error(`HTTP ${resp.status} :: ${errText.slice(0, 300)}`);
-    }
-
-    const clone = resp.clone();
-
-    try {
-      return await resp.json();
-    } catch {
-      const text = await clone.text().catch(() => "");
-      const cleaned = text.replace(/^\uFEFF/, "").trim();
-      const firstBrace = cleaned.indexOf("{");
-      const lastBrace  = cleaned.lastIndexOf("}");
-
-      if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-        throw new Error("Resposta não parece JSON válido (sem chaves).");
-      }
-
-      const jsonText = cleaned.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(jsonText);
-    }
-  }
-
   async function carregar() {
     resetLog();
 
@@ -576,9 +543,16 @@
     addLog(`🔎 Consultando via proxy... Município ${municipio}`);
 
     try {
-      const payload = await fetchJsonRobusto(url);
-      const rows = normalizeApi(payload);
+      const resp = await fetch(url);
+      const payload = await resp.json();
 
+      if (!resp.ok) {
+        addLog("❌ Proxy retornou erro.", "bad");
+        addLog(JSON.stringify(payload, null, 2).slice(0, 1600), "bad");
+        return;
+      }
+
+      const rows = normalizeApi(payload);
       rowsCache = rows;
       buildSearchIndex(rows);
 
@@ -610,8 +584,7 @@
     downloadText(`faltantes_itens_remuneratorios_mun${ultimoRelatorio.municipio}.txt`, buildReportTxt(ultimoRelatorio));
   });
 
-  // init
-  renderMunicipios(MUNICIPIOS, "057"); // Fortaleza
+  renderMunicipios(MUNICIPIOS, "057");
   municipioSelect.value = "057";
 </script>
 </body>
