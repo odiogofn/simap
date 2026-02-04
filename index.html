@@ -3,13 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Itens Remuneratórios - Códigos faltantes (Prefeitura/Câmara)</title>
+  <title>SIMAP — Itens Remuneratórios: faltantes</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 18px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
     label { display:block; font-size:12px; margin-bottom:4px; color:#333; }
-    input, textarea { padding:8px; font-size:14px; }
-    input { min-width: 220px; }
+    input { padding:8px; font-size:14px; min-width: 220px; }
     button { padding:10px 12px; cursor:pointer; }
     .muted { color:#666; font-size:12px; margin-top:6px; }
     #log { white-space:pre-wrap; background:#f6f6f6; border:1px solid #ddd; padding:10px; margin-top:12px; }
@@ -20,33 +19,27 @@
     table { width:100%; border-collapse:collapse; margin-top:10px; }
     th, td { border:1px solid #e1e1e1; padding:7px; font-size:13px; vertical-align:top; }
     th { background:#fafafa; position:sticky; top:0; }
-    textarea { width:100%; min-height:140px; }
-    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .ok { color:#0a7; }
     .bad { color:#c00; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
   </style>
 </head>
 <body>
-  <h2>SIM — Itens Remuneratórios: códigos faltantes</h2>
+  <h2>SIMAP — Itens Remuneratórios: códigos faltantes</h2>
 
   <div class="row">
     <div>
       <label>Código do município (ex: 013)</label>
       <input id="municipio" value="013" />
     </div>
-    <div>
-      <label>Endpoint</label>
-      <input id="baseUrl" value="https://api.tce.ce.gov.br/index.php/sim/1_0/itens_remuneratorios.json" />
-    </div>
-    <button id="btnCarregar">Carregar da API</button>
-    <button id="btnAnalisarColado">Analisar JSON colado</button>
+
+    <button id="btnCarregar">Carregar (via proxy)</button>
     <button id="btnBaixarRelatorio" disabled>Baixar relatório (TXT)</button>
   </div>
 
   <div class="muted">
-    Regras: <b>1000–1999 = Prefeitura</b>, <b>2000–2999 = Câmara</b>. Campo do código: <code>codigo_item</code>.  
-    Sempre incluir: <b>vazios/ inválidos</b> (codigo_item vazio/nulo/0/não numérico).
+    Regras: <b>1000–1999 = Prefeitura</b>, <b>2000–2999 = Câmara</b>. Campo do código: <code>codigo_item</code>.
+    Sempre mostrar: <b>vazios/ inválidos</b>.
   </div>
 
   <div id="log"></div>
@@ -77,14 +70,6 @@
     </div>
   </div>
 
-  <div class="card" style="margin-top:12px;">
-    <h3>Se der CORS / Failed to fetch: cole o JSON aqui</h3>
-    <textarea id="jsonColado" placeholder='Cole aqui o JSON completo (no formato {"rsp":{"_content":[...]}} )...'></textarea>
-    <div class="actions">
-      <button id="btnLimparColado">Limpar</button>
-    </div>
-  </div>
-
 <script>
   const $ = (id) => document.getElementById(id);
 
@@ -97,14 +82,14 @@
   const camTableEl  = $("camTable");
   const vazioTableEl = $("vazioTable");
 
-  let ultimo = null;      // resultado final
-  let rowsData = null;    // array de objetos
+  let ultimo = null;
 
   function log(msg, cls="") {
     const div = document.createElement("div");
     div.textContent = msg;
     if (cls) div.className = cls;
     logEl.appendChild(div);
+    console.log(msg);
   }
 
   function clearUI() {
@@ -128,9 +113,8 @@
   }
 
   function normalize(payload) {
-    // Seu formato: { rsp: { _content: [ ... ] } }
+    // formato: { rsp: { _content: [ ... ] } }
     if (payload?.rsp && Array.isArray(payload.rsp._content)) return payload.rsp._content;
-    // fallback: array direto
     if (Array.isArray(payload)) return payload;
     return [];
   }
@@ -154,7 +138,6 @@
       const raw = r?.[field];
       const d = digitsOnly(raw);
 
-      // vazio / nulo / ""
       if (!d) {
         vazios.push({ motivo: "vazio", codigo_item: raw ?? "", ...r });
         continue;
@@ -173,7 +156,6 @@
 
       if (n >= prefFrom && n <= prefTo) presentPref.add(n);
       else if (n >= camFrom && n <= camTo) presentCam.add(n);
-      // fora do range: ignora (se quiser listar também, eu coloco)
     }
 
     const prefMissing = expected(prefFrom, prefTo).filter(n => !presentPref.has(n));
@@ -203,7 +185,6 @@
       return;
     }
 
-    // Colunas úteis do seu objeto
     const cols = [
       "motivo",
       "codigo_municipio",
@@ -261,90 +242,60 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  async function loadFromApi() {
+  async function carregar() {
     clearUI();
 
     const municipio = padMun($("municipio").value);
-    const baseUrl = ($("baseUrl").value || "").trim();
     if (!municipio) { log("⚠️ Informe o município.", "bad"); return; }
 
-    const url = `${baseUrl}?codigo_municipio=${encodeURIComponent(municipio)}`;
-    log(`🔎 Buscando: ${url}`);
+    const alvo =
+      "https://api.tce.ce.gov.br/index.php/sim/1_0/itens_remuneratorios.json" +
+      `?codigo_municipio=${encodeURIComponent(municipio)}`;
+
+    const url = `/api/proxy?url=${encodeURIComponent(alvo)}`;
+    log(`🔎 Consultando via proxy...`);
 
     try {
       const resp = await fetch(url);
       const text = await resp.text();
 
       if (!resp.ok) {
-        log(`❌ HTTP ${resp.status} ao consultar API.`, "bad");
-        log(text.slice(0, 500));
-        log("Se der CORS/Failed to fetch, copie a resposta e use 'Analisar JSON colado'.", "muted");
+        log(`❌ Proxy retornou HTTP ${resp.status}`, "bad");
+        log(text.slice(0, 800));
         return;
       }
 
       let payload;
       try { payload = JSON.parse(text); }
       catch {
-        log("❌ Resposta não é JSON.", "bad");
-        log(text.slice(0, 400));
+        log("❌ O proxy não retornou JSON.", "bad");
+        log(text.slice(0, 800));
         return;
       }
 
       const rows = normalize(payload);
-      rowsData = rows;
+      log(`✅ Registros recebidos: ${rows.length}`, "ok");
 
-      log(`✅ Registros: ${rows.length}`, "ok");
-      runAnalysis(municipio);
+      const result = analyze(rows, municipio);
+      ultimo = result;
+
+      prefResumoEl.textContent = `Presentes: ${result.presentPrefCount} | Faltando: ${result.prefMissing.length}`;
+      camResumoEl.textContent  = `Presentes: ${result.presentCamCount} | Faltando: ${result.camMissing.length}`;
+      vazioResumoEl.textContent = `Vazios/Inválidos: ${result.vazios.length}`;
+
+      renderMissing(prefTableEl, result.prefMissing);
+      renderMissing(camTableEl, result.camMissing);
+      renderVazios(vazioTableEl, result.vazios);
+
+      $("btnBaixarRelatorio").disabled = false;
+      log("✅ Análise concluída.", "ok");
+
     } catch (e) {
-      log(`❌ Failed to fetch / erro de rede: ${e?.message || e}`, "bad");
-      log("Se isso for CORS, cole o JSON abaixo e clique em 'Analisar JSON colado'.", "muted");
+      log(`❌ Erro: ${e?.message || e}`, "bad");
     }
   }
 
-  function loadFromPasted() {
-    clearUI();
-
-    const txt = $("jsonColado").value.trim();
-    if (!txt) { log("⚠️ Cole o JSON primeiro.", "bad"); return; }
-
-    let payload;
-    try { payload = JSON.parse(txt); }
-    catch (e) {
-      log("❌ JSON colado inválido.", "bad");
-      log(String(e?.message || e));
-      return;
-    }
-
-    const municipio = padMun($("municipio").value);
-    const rows = normalize(payload);
-    rowsData = rows;
-
-    log(`✅ JSON colado carregado. Registros: ${rows.length}`, "ok");
-    runAnalysis(municipio);
-  }
-
-  function runAnalysis(municipio) {
-    if (!rowsData) { log("⚠️ Sem dados para analisar.", "bad"); return; }
-
-    const result = analyze(rowsData, municipio);
-    ultimo = result;
-
-    prefResumoEl.textContent = `Presentes: ${result.presentPrefCount} | Faltando: ${result.prefMissing.length}`;
-    camResumoEl.textContent  = `Presentes: ${result.presentCamCount} | Faltando: ${result.camMissing.length}`;
-    vazioResumoEl.textContent = `Vazios/Inválidos: ${result.vazios.length}`;
-
-    renderMissing(prefTableEl, result.prefMissing);
-    renderMissing(camTableEl, result.camMissing);
-    renderVazios(vazioTableEl, result.vazios);
-
-    $("btnBaixarRelatorio").disabled = false;
-
-    log("✅ Análise concluída.", "ok");
-  }
-
-  $("btnCarregar").addEventListener("click", loadFromApi);
-  $("btnAnalisarColado").addEventListener("click", loadFromPasted);
-  $("btnLimparColado").addEventListener("click", () => { $("jsonColado").value = ""; });
+  $("btnCarregar").addEventListener("click", carregar);
 
   $("btnBaixarRelatorio").addEventListener("click", () => {
     if (!ultimo) return;
