@@ -1,24 +1,22 @@
 import https from "https";
 
-function getText(url, timeoutMs = 20000) {
+function getText(url, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
     const req = https.get(
       url,
       {
         headers: {
           "User-Agent": "Mozilla/5.0",
-          "Accept": "application/json,text/plain,*/*",
-        },
+          "Accept": "application/json,text/plain,*/*"
+        }
       },
       (res) => {
         const chunks = [];
         res.on("data", (d) => chunks.push(d));
         res.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf8");
           resolve({
             status: res.statusCode || 0,
-            headers: res.headers || {},
-            body,
+            body: Buffer.concat(chunks).toString("utf8")
           });
         });
       }
@@ -26,13 +24,34 @@ function getText(url, timeoutMs = 20000) {
 
     req.on("error", reject);
     req.setTimeout(timeoutMs, () => {
-      req.destroy(new Error("Timeout ao chamar a API do TCE"));
+      req.destroy(new Error("Timeout"));
     });
   });
 }
 
+async function getWithRetry(url) {
+  const attempts = [
+    { timeout: 8000, wait: 200 },
+    { timeout: 12000, wait: 400 },
+    { timeout: 18000, wait: 0 }
+  ];
+
+  let lastErr = null;
+  for (let i = 0; i < attempts.length; i++) {
+    try {
+      const r = await getText(url, attempts[i].timeout);
+      return r;
+    } catch (e) {
+      lastErr = e;
+      if (attempts[i].wait) {
+        await new Promise((r) => setTimeout(r, attempts[i].wait));
+      }
+    }
+  }
+  throw new Error(`Timeout ao chamar a API do TCE após ${attempts.length} tentativas: ${String(lastErr?.message || lastErr)}`);
+}
+
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -48,8 +67,7 @@ export default async function handler(req, res) {
     if (!codigo_municipio || !exercicio_orcamento || cpf_servidor.length !== 11) {
       return res.status(400).json({
         error: "Parâmetros inválidos",
-        esperado: "codigo_municipio, exercicio_orcamento, cpf_servidor(11 dígitos)",
-        recebido: { codigo_municipio, exercicio_orcamento, cpf_servidor },
+        esperado: "codigo_municipio, exercicio_orcamento, cpf_servidor(11 dígitos)"
       });
     }
 
@@ -59,38 +77,32 @@ export default async function handler(req, res) {
       `&exercicio_orcamento=${encodeURIComponent(exercicio_orcamento)}` +
       `&cpf_servidor=${encodeURIComponent(cpf_servidor)}`;
 
-    const r = await getText(upstream);
+    const r = await getWithRetry(upstream);
 
-    // Se a API do TCE devolver erro, a gente repassa com um “snippet”
     if (r.status < 200 || r.status >= 300) {
       return res.status(502).json({
         error: "Upstream (TCE) retornou erro",
         upstream_status: r.status,
-        upstream_url: upstream,
-        upstream_body_snippet: (r.body || "").slice(0, 1200),
+        upstream_body_snippet: (r.body || "").slice(0, 1200)
       });
     }
 
-    // Tenta JSON; se vier HTML, você vai ver o snippet
     let data;
     try {
       data = JSON.parse(r.body);
     } catch {
       return res.status(502).json({
         error: "Upstream retornou algo que não é JSON",
-        upstream_url: upstream,
-        upstream_body_snippet: (r.body || "").slice(0, 1200),
+        upstream_body_snippet: (r.body || "").slice(0, 1200)
       });
     }
 
-    // Cache leve no edge do Vercel
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
     return res.status(200).json(data);
   } catch (e) {
     return res.status(500).json({
       error: "Falha interna no proxy",
-      details: String(e?.message || e),
-      stack: String(e?.stack || ""),
+      details: String(e?.message || e)
     });
   }
 }
