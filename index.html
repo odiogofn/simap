@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SIMAP — Itens Remuneratórios: faltantes</title>
+  <title>SIMAP — Itens Remuneratórios: faltantes + pesquisa</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 18px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
@@ -12,20 +12,33 @@
     button { padding:10px 12px; cursor:pointer; }
     .muted { color:#666; font-size:12px; margin-top:6px; }
     #log { white-space:pre-wrap; background:#f6f6f6; border:1px solid #ddd; padding:10px; margin-top:12px; }
+
+    .tabs { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+    .tabbtn {
+      border:1px solid #ddd; background:#fff; padding:8px 10px; border-radius:10px;
+      cursor:pointer; user-select:none;
+    }
+    .tabbtn.active { background:#f3f3f3; border-color:#cfcfcf; }
+
     .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
     .card { border:1px solid #ddd; border-radius:10px; padding:12px; background:#fff; }
     .card h3 { margin:0 0 8px 0; font-size:16px; }
     .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#f3f3f3; font-size:12px; margin-left:6px; }
+
     table { width:100%; border-collapse:collapse; margin-top:10px; }
     th, td { border:1px solid #e1e1e1; padding:7px; font-size:13px; vertical-align:top; }
     th { background:#fafafa; position:sticky; top:0; }
+
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .ok { color:#0a7; }
     .bad { color:#c00; }
+
+    .hidden { display:none; }
+    .small { font-size:12px; color:#666; }
   </style>
 </head>
 <body>
-  <h2>SIMAP — Itens Remuneratórios: códigos faltantes</h2>
+  <h2>SIMAP — Itens Remuneratórios</h2>
 
   <div class="row">
     <div>
@@ -44,29 +57,67 @@
 
   <div id="log"></div>
 
-  <div class="grid">
-    <div class="card">
-      <h3>Prefeitura <span class="pill">1000–1999</span></h3>
-      <div id="prefResumo" class="mono"></div>
-      <div style="max-height: 45vh; overflow:auto;">
-        <table id="prefTable"></table>
+  <!-- Abas -->
+  <div class="tabs">
+    <div class="tabbtn active" id="tabFaltantesBtn">Faltantes</div>
+    <div class="tabbtn" id="tabPesquisarBtn">Pesquisar descrição</div>
+  </div>
+
+  <!-- ABA: FALTANTES -->
+  <div id="tabFaltantes">
+    <div class="grid">
+      <div class="card">
+        <h3>Prefeitura <span class="pill">1000–1999</span></h3>
+        <div id="prefResumo" class="mono"></div>
+        <div style="max-height: 45vh; overflow:auto;">
+          <table id="prefTable"></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Câmara <span class="pill">2000–2999</span></h3>
+        <div id="camResumo" class="mono"></div>
+        <div style="max-height: 45vh; overflow:auto;">
+          <table id="camTable"></table>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h3>Câmara <span class="pill">2000–2999</span></h3>
-      <div id="camResumo" class="mono"></div>
-      <div style="max-height: 45vh; overflow:auto;">
-        <table id="camTable"></table>
+    <div class="card" style="margin-top:12px;">
+      <h3>Vazios / inválidos (sempre mostrar)</h3>
+      <div id="vazioResumo" class="mono"></div>
+      <div style="max-height: 40vh; overflow:auto;">
+        <table id="vazioTable"></table>
       </div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:12px;">
-    <h3>Vazios / inválidos (sempre mostrar)</h3>
-    <div id="vazioResumo" class="mono"></div>
-    <div style="max-height: 40vh; overflow:auto;">
-      <table id="vazioTable"></table>
+  <!-- ABA: PESQUISAR -->
+  <div id="tabPesquisar" class="hidden">
+    <div class="card" style="margin-top:12px;">
+      <h3>Pesquisar em tempo real</h3>
+
+      <div class="row">
+        <div>
+          <label>Termo (ex: INSS)</label>
+          <input id="searchInput" placeholder="Digite para filtrar..." />
+        </div>
+        <div>
+          <label>Limite de resultados</label>
+          <input id="searchLimit" type="number" value="300" />
+        </div>
+        <button id="btnLimparBusca">Limpar</button>
+      </div>
+
+      <div class="small">
+        O filtro procura o termo em <b>qualquer campo</b> do registro (case-insensitive).
+      </div>
+
+      <div id="searchResumo" class="mono" style="margin-top:10px;"></div>
+
+      <div style="max-height: 65vh; overflow:auto;">
+        <table id="searchTable"></table>
+      </div>
     </div>
   </div>
 
@@ -82,7 +133,20 @@
   const camTableEl  = $("camTable");
   const vazioTableEl = $("vazioTable");
 
-  let ultimo = null;
+  const tabFaltantesBtn = $("tabFaltantesBtn");
+  const tabPesquisarBtn = $("tabPesquisarBtn");
+  const tabFaltantes = $("tabFaltantes");
+  const tabPesquisar = $("tabPesquisar");
+
+  const searchInput = $("searchInput");
+  const searchLimit = $("searchLimit");
+  const btnLimparBusca = $("btnLimparBusca");
+  const searchResumo = $("searchResumo");
+  const searchTable = $("searchTable");
+
+  let ultimo = null;           // resultado faltantes
+  let rowsCache = [];          // registros completos (rsp._content)
+  let rowsSearchIndex = [];    // [{row, haystack}] para busca rápida
 
   function log(msg, cls="") {
     const div = document.createElement("div");
@@ -102,6 +166,13 @@
     vazioTableEl.innerHTML = "";
     $("btnBaixarRelatorio").disabled = true;
     ultimo = null;
+
+    // pesquisa
+    searchResumo.textContent = "";
+    searchTable.innerHTML = "";
+    searchInput.value = "";
+    rowsCache = [];
+    rowsSearchIndex = [];
   }
 
   function digitsOnly(s) {
@@ -113,7 +184,6 @@
   }
 
   function normalize(payload) {
-    // formato: { rsp: { _content: [ ... ] } }
     if (payload?.rsp && Array.isArray(payload.rsp._content)) return payload.rsp._content;
     if (Array.isArray(payload)) return payload;
     return [];
@@ -138,21 +208,11 @@
       const raw = r?.[field];
       const d = digitsOnly(raw);
 
-      if (!d) {
-        vazios.push({ motivo: "vazio", codigo_item: raw ?? "", ...r });
-        continue;
-      }
+      if (!d) { vazios.push({ motivo: "vazio", codigo_item: raw ?? "", ...r }); continue; }
 
       const n = Number(d);
-      if (!Number.isFinite(n)) {
-        vazios.push({ motivo: "nao-numerico", codigo_item: raw ?? "", ...r });
-        continue;
-      }
-
-      if (n === 0) {
-        vazios.push({ motivo: "zero", codigo_item: raw ?? "", ...r });
-        continue;
-      }
+      if (!Number.isFinite(n)) { vazios.push({ motivo: "nao-numerico", codigo_item: raw ?? "", ...r }); continue; }
+      if (n === 0) { vazios.push({ motivo: "zero", codigo_item: raw ?? "", ...r }); continue; }
 
       if (n >= prefFrom && n <= prefTo) presentPref.add(n);
       else if (n >= camFrom && n <= camTo) presentCam.add(n);
@@ -242,6 +302,99 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  // ---------- Abas ----------
+  function setTab(which) {
+    const isF = which === "faltantes";
+    tabFaltantes.classList.toggle("hidden", !isF);
+    tabPesquisar.classList.toggle("hidden", isF);
+    tabFaltantesBtn.classList.toggle("active", isF);
+    tabPesquisarBtn.classList.toggle("active", !isF);
+  }
+
+  tabFaltantesBtn.addEventListener("click", () => setTab("faltantes"));
+  tabPesquisarBtn.addEventListener("click", () => setTab("pesquisar"));
+
+  // ---------- Pesquisa ----------
+  function buildSearchIndex(rows) {
+    // monta uma string “haystack” por registro (junta tudo)
+    rowsSearchIndex = rows.map(row => {
+      // JSON.stringify já inclui valores de todos campos
+      const haystack = JSON.stringify(row).toLowerCase();
+      return { row, haystack };
+    });
+  }
+
+  function renderSearchRows(rows) {
+    if (!rows.length) {
+      searchTable.innerHTML = `<thead><tr><th>status</th></tr></thead><tbody><tr><td>Nenhum registro encontrado</td></tr></tbody>`;
+      return;
+    }
+
+    // colunas úteis primeiro
+    const cols = [
+      "codigo_municipio",
+      "codigo_item",
+      "tipo_item",
+      "descricao_item",
+      "tipo_classificacao",
+      "st_extinto_ir",
+      "data_publicacao",
+      "data_referencia"
+    ];
+
+    searchTable.innerHTML = `
+      <thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>${cols.map(c => `<td>${r?.[c] ?? ""}</td>`).join("")}</tr>
+        `).join("")}
+      </tbody>
+    `;
+  }
+
+  function doSearchNow() {
+    const q = (searchInput.value || "").trim().toLowerCase();
+    const limit = Math.max(1, Math.min(5000, parseInt(searchLimit.value || "300", 10)));
+
+    if (!rowsCache.length) {
+      searchResumo.textContent = "Carregue os dados primeiro (clique em Carregar).";
+      searchTable.innerHTML = "";
+      return;
+    }
+
+    if (!q) {
+      searchResumo.textContent = `Total carregado: ${rowsCache.length}. Digite um termo para filtrar.`;
+      searchTable.innerHTML = "";
+      return;
+    }
+
+    const hits = [];
+    for (const item of rowsSearchIndex) {
+      if (item.haystack.includes(q)) {
+        hits.push(item.row);
+        if (hits.length >= limit) break;
+      }
+    }
+
+    searchResumo.textContent = `Termo: "${q}" | Encontrados: ${hits.length} (limite ${limit}) | Total carregado: ${rowsCache.length}`;
+    renderSearchRows(hits);
+  }
+
+  let searchTimer = null;
+  function scheduleSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearchNow, 120); // “tempo real” sem travar
+  }
+
+  searchInput.addEventListener("input", scheduleSearch);
+  searchLimit.addEventListener("input", scheduleSearch);
+
+  btnLimparBusca.addEventListener("click", () => {
+    searchInput.value = "";
+    doSearchNow();
+  });
+
+  // ---------- Carregar ----------
   async function carregar() {
     clearUI();
 
@@ -274,6 +427,9 @@
       }
 
       const rows = normalize(payload);
+      rowsCache = rows;
+      buildSearchIndex(rows);
+
       log(`✅ Registros recebidos: ${rows.length}`, "ok");
 
       const result = analyze(rows, municipio);
@@ -289,6 +445,9 @@
 
       $("btnBaixarRelatorio").disabled = false;
       log("✅ Análise concluída.", "ok");
+
+      // prepara resumo da aba pesquisar
+      doSearchNow();
 
     } catch (e) {
       log(`❌ Erro: ${e?.message || e}`, "bad");
