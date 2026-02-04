@@ -3,99 +3,354 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SIMAP Offline - Baixar e Pesquisar CPF</title>
+  <title>Itens Remuneratórios - Códigos faltantes (Prefeitura/Câmara)</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
+    body { font-family: Arial, sans-serif; margin: 18px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
-    label { display:block; font-size:12px; margin-bottom:4px; }
-    input { padding:8px; min-width:190px; }
+    label { display:block; font-size:12px; margin-bottom:4px; color:#333; }
+    input, textarea { padding:8px; font-size:14px; }
+    input { min-width: 220px; }
     button { padding:10px 12px; cursor:pointer; }
-    #log { white-space:pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ddd; margin-top:12px; }
-    table { width:100%; border-collapse:collapse; margin-top:12px; }
-    th, td { border:1px solid #ddd; padding:8px; font-size:13px; vertical-align:top; }
+    .muted { color:#666; font-size:12px; margin-top:6px; }
+    #log { white-space:pre-wrap; background:#f6f6f6; border:1px solid #ddd; padding:10px; margin-top:12px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
+    .card { border:1px solid #ddd; border-radius:10px; padding:12px; background:#fff; }
+    .card h3 { margin:0 0 8px 0; font-size:16px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#f3f3f3; font-size:12px; margin-left:6px; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border:1px solid #e1e1e1; padding:7px; font-size:13px; vertical-align:top; }
     th { background:#fafafa; position:sticky; top:0; }
+    textarea { width:100%; min-height:140px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .ok { color:#0a7; }
+    .bad { color:#c00; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
   </style>
 </head>
 <body>
-  <h2>SIMAP Offline — Baixar dados e pesquisar CPF</h2>
+  <h2>SIM — Itens Remuneratórios: códigos faltantes</h2>
 
   <div class="row">
     <div>
-      <label>Município</label>
-      <input id="municipio" value="176" />
+      <label>Código do município (ex: 013)</label>
+      <input id="municipio" value="013" />
     </div>
     <div>
-      <label>Ano inicial</label>
-      <input id="anoIni" type="number" value="2020" />
+      <label>Endpoint</label>
+      <input id="baseUrl" value="https://api.tce.ce.gov.br/index.php/sim/1_0/itens_remuneratorios.json" />
     </div>
-    <div>
-      <label>Ano final</label>
-      <input id="anoFim" type="number" value="2025" />
-    </div>
-    <button id="btnBaixar">Baixar e salvar no navegador</button>
-    <button id="btnLimpar">Limpar cache</button>
+    <button id="btnCarregar">Carregar da API</button>
+    <button id="btnAnalisarColado">Analisar JSON colado</button>
+    <button id="btnBaixarRelatorio" disabled>Baixar relatório (TXT)</button>
   </div>
 
-  <hr />
-
-  <div class="row">
-    <div>
-      <label>CPF para pesquisar</label>
-      <input id="cpf" placeholder="00000000000" />
-    </div>
-    <button id="btnPesquisar">Pesquisar no cache</button>
+  <div class="muted">
+    Regras: <b>1000–1999 = Prefeitura</b>, <b>2000–2999 = Câmara</b>. Campo do código: <code>codigo_item</code>.  
+    Sempre incluir: <b>vazios/ inválidos</b> (codigo_item vazio/nulo/0/não numérico).
   </div>
 
   <div id="log"></div>
-  <div id="resultado"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Prefeitura <span class="pill">1000–1999</span></h3>
+      <div id="prefResumo" class="mono"></div>
+      <div style="max-height: 45vh; overflow:auto;">
+        <table id="prefTable"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Câmara <span class="pill">2000–2999</span></h3>
+      <div id="camResumo" class="mono"></div>
+      <div style="max-height: 45vh; overflow:auto;">
+        <table id="camTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3>Vazios / inválidos (sempre mostrar)</h3>
+    <div id="vazioResumo" class="mono"></div>
+    <div style="max-height: 40vh; overflow:auto;">
+      <table id="vazioTable"></table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3>Se der CORS / Failed to fetch: cole o JSON aqui</h3>
+    <textarea id="jsonColado" placeholder='Cole aqui o JSON completo (no formato {"rsp":{"_content":[...]}} )...'></textarea>
+    <div class="actions">
+      <button id="btnLimparColado">Limpar</button>
+    </div>
+  </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
+
   const logEl = $("log");
-  const resEl = $("resultado");
+  const prefResumoEl = $("prefResumo");
+  const camResumoEl  = $("camResumo");
+  const vazioResumoEl = $("vazioResumo");
 
-  const BASE = "https://api.tce.ce.gov.br/index.php/sim/1_0/agentes_publicos.json";
+  const prefTableEl = $("prefTable");
+  const camTableEl  = $("camTable");
+  const vazioTableEl = $("vazioTable");
 
-  function log(msg){ console.log(msg); logEl.textContent += msg + "\n"; }
-  function digits(s){ return (s || "").replace(/\D+/g, ""); }
-  function padMun(m){ return digits(m).padStart(3, "0"); }
-  function exOrc(ano){ return String(ano) + "00"; }
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+  let ultimo = null;      // resultado final
+  let rowsData = null;    // array de objetos
 
-  // ---------- IndexedDB ----------
-  const DB_NAME = "simap_cache";
-  const DB_VERSION = 1;
-  const STORE = "agentes_publicos"; // key: municipio|exercicio
-
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(STORE)) {
-          db.createObjectStore(STORE, { keyPath: "key" });
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+  function log(msg, cls="") {
+    const div = document.createElement("div");
+    div.textContent = msg;
+    if (cls) div.className = cls;
+    logEl.appendChild(div);
   }
 
-  async function idbPut(key, payload) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).put({ key, payload, savedAt: Date.now() });
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+  function clearUI() {
+    logEl.textContent = "";
+    prefResumoEl.textContent = "";
+    camResumoEl.textContent = "";
+    vazioResumoEl.textContent = "";
+    prefTableEl.innerHTML = "";
+    camTableEl.innerHTML = "";
+    vazioTableEl.innerHTML = "";
+    $("btnBaixarRelatorio").disabled = true;
+    ultimo = null;
   }
 
-  async function idbGet(key) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, "readonly");
-      const req = tx.objectStore(STORE).get(key);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
+  function digitsOnly(s) {
+    return (s ?? "").toString().replace(/\D+/g, "");
+  }
+
+  function padMun(m) {
+    return digitsOnly(m).padStart(3, "0");
+  }
+
+  function normalize(payload) {
+    // Seu formato: { rsp: { _content: [ ... ] } }
+    if (payload?.rsp && Array.isArray(payload.rsp._content)) return payload.rsp._content;
+    // fallback: array direto
+    if (Array.isArray(payload)) return payload;
+    return [];
+  }
+
+  function expected(from, to) {
+    const out = [];
+    for (let i = from; i <= to; i++) out.push(i);
+    return out;
+  }
+
+  function analyze(rows, municipio) {
+    const field = "codigo_item";
+    const prefFrom=1000, prefTo=1999;
+    const camFrom=2000, camTo=2999;
+
+    const presentPref = new Set();
+    const presentCam  = new Set();
+    const vazios = [];
+
+    for (const r of rows) {
+      const raw = r?.[field];
+      const d = digitsOnly(raw);
+
+      // vazio / nulo / ""
+      if (!d) {
+        vazios.push({ motivo: "vazio", codigo_item: raw ?? "", ...r });
+        continue;
+      }
+
+      const n = Number(d);
+      if (!Number.isFinite(n)) {
+        vazios.push({ motivo: "nao-numerico", codigo_item: raw ?? "", ...r });
+        continue;
+      }
+
+      if (n === 0) {
+        vazios.push({ motivo: "zero", codigo_item: raw ?? "", ...r });
+        continue;
+      }
+
+      if (n >= prefFrom && n <= prefTo) presentPref.add(n);
+      else if (n >= camFrom && n <= camTo) presentCam.add(n);
+      // fora do range: ignora (se quiser listar também, eu coloco)
+    }
+
+    const prefMissing = expected(prefFrom, prefTo).filter(n => !presentPref.has(n));
+    const camMissing  = expected(camFrom, camTo).filter(n => !presentCam.has(n));
+
+    return {
+      municipio,
+      field,
+      prefMissing,
+      camMissing,
+      vazios,
+      presentPrefCount: presentPref.size,
+      presentCamCount: presentCam.size
+    };
+  }
+
+  function renderMissing(tableEl, missing) {
+    tableEl.innerHTML = `
+      <thead><tr><th>codigo_faltando</th></tr></thead>
+      <tbody>${missing.map(n => `<tr><td>${n}</td></tr>`).join("")}</tbody>
+    `;
+  }
+
+  function renderVazios(tableEl, vazios, maxRows=300) {
+    if (!vazios.length) {
+      tableEl.innerHTML = `<thead><tr><th>status</th></tr></thead><tbody><tr><td>Sem vazios/ inválidos</td></tr></tbody>`;
+      return;
+    }
+
+    // Colunas úteis do seu objeto
+    const cols = [
+      "motivo",
+      "codigo_municipio",
+      "codigo_item",
+      "tipo_item",
+      "descricao_item",
+      "codigo_amparo_legal",
+      "numeto_amparo_legal",
+      "data_amparo_legal",
+      "data_publicacao",
+      "st_extinto_ir",
+      "data_referencia"
+    ];
+
+    tableEl.innerHTML = `
+      <thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+      <tbody>
+        ${vazios.slice(0, maxRows).map(r => `
+          <tr>${cols.map(c => `<td>${r?.[c] ?? ""}</td>`).join("")}</tr>
+        `).join("")}
+      </tbody>
+    `;
+  }
+
+  function buildReportTxt(r) {
+    const lines = [];
+    lines.push(`MUNICIPIO: ${r.municipio}`);
+    lines.push(`CAMPO_CODIGO: ${r.field}`);
+    lines.push("");
+
+    lines.push("PREFEITURA (1000-1999)");
+    lines.push(`Presentes: ${r.presentPrefCount}`);
+    lines.push(`Faltando: ${r.prefMissing.length}`);
+    lines.push(r.prefMissing.join(", "));
+    lines.push("");
+
+    lines.push("CAMARA (2000-2999)");
+    lines.push(`Presentes: ${r.presentCamCount}`);
+    lines.push(`Faltando: ${r.camMissing.length}`);
+    lines.push(r.camMissing.join(", "));
+    lines.push("");
+
+    lines.push("VAZIOS/INVALIDOS");
+    lines.push(`Quantidade: ${r.vazios.length}`);
+
+    return lines.join("\n");
+  }
+
+  function downloadText(filename, text) {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  async function loadFromApi() {
+    clearUI();
+
+    const municipio = padMun($("municipio").value);
+    const baseUrl = ($("baseUrl").value || "").trim();
+    if (!municipio) { log("⚠️ Informe o município.", "bad"); return; }
+
+    const url = `${baseUrl}?codigo_municipio=${encodeURIComponent(municipio)}`;
+    log(`🔎 Buscando: ${url}`);
+
+    try {
+      const resp = await fetch(url);
+      const text = await resp.text();
+
+      if (!resp.ok) {
+        log(`❌ HTTP ${resp.status} ao consultar API.`, "bad");
+        log(text.slice(0, 500));
+        log("Se der CORS/Failed to fetch, copie a resposta e use 'Analisar JSON colado'.", "muted");
+        return;
+      }
+
+      let payload;
+      try { payload = JSON.parse(text); }
+      catch {
+        log("❌ Resposta não é JSON.", "bad");
+        log(text.slice(0, 400));
+        return;
+      }
+
+      const rows = normalize(payload);
+      rowsData = rows;
+
+      log(`✅ Registros: ${rows.length}`, "ok");
+      runAnalysis(municipio);
+    } catch (e) {
+      log(`❌ Failed to fetch / erro de rede: ${e?.message || e}`, "bad");
+      log("Se isso for CORS, cole o JSON abaixo e clique em 'Analisar JSON colado'.", "muted");
+    }
+  }
+
+  function loadFromPasted() {
+    clearUI();
+
+    const txt = $("jsonColado").value.trim();
+    if (!txt) { log("⚠️ Cole o JSON primeiro.", "bad"); return; }
+
+    let payload;
+    try { payload = JSON.parse(txt); }
+    catch (e) {
+      log("❌ JSON colado inválido.", "bad");
+      log(String(e?.message || e));
+      return;
+    }
+
+    const municipio = padMun($("municipio").value);
+    const rows = normalize(payload);
+    rowsData = rows;
+
+    log(`✅ JSON colado carregado. Registros: ${rows.length}`, "ok");
+    runAnalysis(municipio);
+  }
+
+  function runAnalysis(municipio) {
+    if (!rowsData) { log("⚠️ Sem dados para analisar.", "bad"); return; }
+
+    const result = analyze(rowsData, municipio);
+    ultimo = result;
+
+    prefResumoEl.textContent = `Presentes: ${result.presentPrefCount} | Faltando: ${result.prefMissing.length}`;
+    camResumoEl.textContent  = `Presentes: ${result.presentCamCount} | Faltando: ${result.camMissing.length}`;
+    vazioResumoEl.textContent = `Vazios/Inválidos: ${result.vazios.length}`;
+
+    renderMissing(prefTableEl, result.prefMissing);
+    renderMissing(camTableEl, result.camMissing);
+    renderVazios(vazioTableEl, result.vazios);
+
+    $("btnBaixarRelatorio").disabled = false;
+
+    log("✅ Análise concluída.", "ok");
+  }
+
+  $("btnCarregar").addEventListener("click", loadFromApi);
+  $("btnAnalisarColado").addEventListener("click", loadFromPasted);
+  $("btnLimparColado").addEventListener("click", () => { $("jsonColado").value = ""; });
+
+  $("btnBaixarRelatorio").addEventListener("click", () => {
+    if (!ultimo) return;
+    const txt = buildReportTxt(ultimo);
+    downloadText(`faltantes_itens_remuneratorios_mun${ultimo.municipio}.txt`, txt);
+  });
+</script>
+</body>
+</html>
