@@ -23,35 +23,36 @@ function getText(url, timeoutMs = 12000) {
     );
 
     req.on("error", reject);
-    req.setTimeout(timeoutMs, () => {
-      req.destroy(new Error("Timeout"));
-    });
+    req.setTimeout(timeoutMs, () => req.destroy(new Error("Timeout")));
   });
 }
 
+async function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// 3 tentativas com backoff leve
 async function getWithRetry(url) {
   const attempts = [
-    { timeout: 8000, wait: 200 },
-    { timeout: 12000, wait: 400 },
-    { timeout: 18000, wait: 0 }
+    { timeout: 10000, wait: 400 },
+    { timeout: 15000, wait: 800 },
+    { timeout: 20000, wait: 0 }
   ];
 
   let lastErr = null;
   for (let i = 0; i < attempts.length; i++) {
     try {
-      const r = await getText(url, attempts[i].timeout);
-      return r;
+      return await getText(url, attempts[i].timeout);
     } catch (e) {
       lastErr = e;
-      if (attempts[i].wait) {
-        await new Promise((r) => setTimeout(r, attempts[i].wait));
-      }
+      if (attempts[i].wait) await sleep(attempts[i].wait);
     }
   }
   throw new Error(`Timeout ao chamar a API do TCE após ${attempts.length} tentativas: ${String(lastErr?.message || lastErr)}`);
 }
 
 export default async function handler(req, res) {
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -67,7 +68,8 @@ export default async function handler(req, res) {
     if (!codigo_municipio || !exercicio_orcamento || cpf_servidor.length !== 11) {
       return res.status(400).json({
         error: "Parâmetros inválidos",
-        esperado: "codigo_municipio, exercicio_orcamento, cpf_servidor(11 dígitos)"
+        esperado: "codigo_municipio, exercicio_orcamento, cpf_servidor(11 dígitos)",
+        recebido: { codigo_municipio, exercicio_orcamento, cpf_servidor }
       });
     }
 
@@ -83,6 +85,7 @@ export default async function handler(req, res) {
       return res.status(502).json({
         error: "Upstream (TCE) retornou erro",
         upstream_status: r.status,
+        upstream_url: upstream,
         upstream_body_snippet: (r.body || "").slice(0, 1200)
       });
     }
@@ -93,6 +96,7 @@ export default async function handler(req, res) {
     } catch {
       return res.status(502).json({
         error: "Upstream retornou algo que não é JSON",
+        upstream_url: upstream,
         upstream_body_snippet: (r.body || "").slice(0, 1200)
       });
     }
