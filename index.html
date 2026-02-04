@@ -3,21 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SIMAP — Itens Remuneratórios: faltantes + pesquisa</title>
+  <title>SIMAP — Itens Remuneratórios</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 18px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
     label { display:block; font-size:12px; margin-bottom:4px; color:#333; }
-    input { padding:8px; font-size:14px; min-width: 220px; }
+    input, select { padding:8px; font-size:14px; min-width: 260px; }
     button { padding:10px 12px; cursor:pointer; }
     .muted { color:#666; font-size:12px; margin-top:6px; }
     #log { white-space:pre-wrap; background:#f6f6f6; border:1px solid #ddd; padding:10px; margin-top:12px; }
 
     .tabs { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-    .tabbtn {
-      border:1px solid #ddd; background:#fff; padding:8px 10px; border-radius:10px;
-      cursor:pointer; user-select:none;
-    }
+    .tabbtn { border:1px solid #ddd; background:#fff; padding:8px 10px; border-radius:10px; cursor:pointer; user-select:none; }
     .tabbtn.active { background:#f3f3f3; border-color:#cfcfcf; }
 
     .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
@@ -32,7 +29,6 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .ok { color:#0a7; }
     .bad { color:#c00; }
-
     .hidden { display:none; }
     .small { font-size:12px; color:#666; }
   </style>
@@ -42,8 +38,13 @@
 
   <div class="row">
     <div>
-      <label>Código do município (ex: 013)</label>
-      <input id="municipio" value="013" />
+      <label>Buscar município (tempo real)</label>
+      <input id="municipioSearch" placeholder="Digite: fortaleza, sobral, juazeiro..." />
+    </div>
+
+    <div>
+      <label>Município</label>
+      <select id="municipioSelect" size="1"></select>
     </div>
 
     <button id="btnCarregar">Carregar (via proxy)</button>
@@ -124,6 +125,7 @@
 <script>
   const $ = (id) => document.getElementById(id);
 
+  // UI refs
   const logEl = $("log");
   const prefResumoEl = $("prefResumo");
   const camResumoEl  = $("camResumo");
@@ -144,10 +146,56 @@
   const searchResumo = $("searchResumo");
   const searchTable = $("searchTable");
 
-  let ultimo = null;           // resultado faltantes
-  let rowsCache = [];          // registros completos (rsp._content)
-  let rowsSearchIndex = [];    // [{row, haystack}] para busca rápida
+  const municipioSearch = $("municipioSearch");
+  const municipioSelect = $("municipioSelect");
 
+  // Data
+  let ultimo = null;
+  let rowsCache = [];
+  let rowsSearchIndex = [];
+
+  // Municípios (nome -> código)
+  const MUNICIPIOS = [
+    ["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
+    ["ALCANTARAS","007"],["ALTANEIRA","008"],["ALTO SANTO","009"],["AMONTADA","010"],["ANTONINA DO NORTE","011"],
+    ["APUIARES","012"],["AQUIRAZ","013"],["ARACATI","014"],["ARACOIABA","015"],["ARARIPE","016"],
+    ["ARATUBA","017"],["ARNEIROZ","018"],["ASSARE","019"],["AURORA","020"],["BAIXIO","021"],
+    ["BANABUIU","022"],["BARBALHA","023"],["BARREIRA","024"],["BARRO","025"],["BARROQUINHA","026"],
+    ["BATURITE","027"],["BEBERIBE","028"],["BELA CRUZ","029"],["BOA VIAGEM","030"],["BREJO SANTO","031"],
+    ["CAMOCIM","032"],["CAMPOS SALES","033"],["CANINDE","034"],["CAPISTRANO","035"],["CARIDADE","036"],
+    ["CARIRE","037"],["CARIRIACU","038"],["CARIUS","039"],["CARNAUBAL","040"],["CASCAVEL","041"],
+    ["CATARINA","042"],["CAUCAIA","043"],["CEDRO","044"],["CHAVAL","045"],["CHOROZINHO","046"],
+    ["COREAU","047"],["CRATEUS","048"],["CRATO","049"],["CROATA","050"],["CRUZ","051"],
+    ["DEPUTADO IRAPUAN PINHEIRO","052"],["ERERE","053"],["EUSEBIO","054"],["FARIAS BRITO","055"],["FORQUILHA","056"],
+    ["FORTALEZA","057"],["FRECHEIRINHA","058"],["GENERAL SAMPAIO","059"],["GRACA","060"],["GRANJA","061"],
+    ["GRANJEIRO","062"],["GROAIRAS","063"],["GUAIUBA","064"],["GUARACIABA DO NORTE","065"],["GUARAMIRANGA","066"],
+    ["HIDROLANDIA","067"],["HORIZONTE","068"],["IBARETAMA","069"],["IBIAPINA","070"],["IBICUITINGA","071"],
+    ["ICAPUI","072"],["ICO","073"],["IGUATU","074"],["INDEPENDENCIA","075"],["IPAPORANGA","076"],
+    ["IPAUMIRIM","077"],["IPU","078"],["IPUEIRAS","079"],["IRACEMA","080"],["IRAUCUBA","081"],
+    ["ITAICABA","082"],["ITAPAJE","083"],["ITAPIPOCA","084"],["ITAPIUNA","085"],["ITAREMA","086"],
+    ["ITATIRA","087"],["JAGUARETAMA","088"],["JAGUARIBARA","089"],["JAGUARIBE","090"],["JAGUARUANA","091"],
+    ["JARDIM","092"],["JATI","093"],["JUAZEIRO DO NORTE","094"],["JUCAS","095"],["LAVRAS DA MANGABEIRA","096"],
+    ["LIMOEIRO DO NORTE","097"],["MADALENA","098"],["MARACANAU","099"],["MARANGUAPE","100"],["MARCO","101"],
+    ["MARTINOPOLE","102"],["MASSAPE","103"],["MAURITI","104"],["MERUOCA","105"],["MILAGRES","106"],
+    ["MILHA","107"],["MIRAIMA","108"],["MISSAO VELHA","109"],["MUCAMBO","110"],["MOMBACA","111"],
+    ["MONSENHOR TABOSA","112"],["MORADA NOVA","113"],["MORAUJO","114"],["MORRINHOS","115"],["MULUNGU","116"],
+    ["NOVA OLINDA","117"],["NOVA RUSSAS","118"],["NOVO ORIENTE","119"],["OCARA","120"],["OROS","121"],
+    ["PACAJUS","122"],["PACATUBA","123"],["PACOTI","124"],["PACUJA","125"],["PALHANO","126"],
+    ["PALMACIA","127"],["PARACURU","128"],["PARAIPABA","129"],["PARAMBU","130"],["PARAMOTI","131"],
+    ["PEDRA BRANCA","132"],["PENAFORTE","133"],["PENTECOSTE","134"],["PEREIRO","135"],["PINDORETAMA","136"],
+    ["PIQUET CARNEIRO","137"],["PIRES FERREIRA","138"],["PORANGA","139"],["PORTEIRAS","140"],["POTENGI","141"],
+    ["POTIRETAMA","142"],["QUITERIANOPOLIS","143"],["QUIXADA","144"],["QUIXELO","145"],["QUIXERAMOBIM","146"],
+    ["QUIXERE","147"],["REDENCAO","148"],["RERIUTABA","149"],["RUSSAS","150"],["SABOEIRO","151"],
+    ["SALITRE","152"],["SANTANA DO ACARAU","153"],["SANTANA DO CARIRI","154"],["SANTA QUITERIA","155"],["SAO BENEDITO","156"],
+    ["SAO GONCALO DO AMARANTE","157"],["SAO JOAO DO JAGUARIBE","158"],["SAO LUIS DO CURU","159"],["SENADOR POMPEU","160"],["SENADOR SA","161"],
+    ["SOBRAL","162"],["SOLONOPOLE","163"],["TABULEIRO DO NORTE","164"],["TAMBORIL","165"],["TARRAFAS","166"],
+    ["TAUA","167"],["TEJUCUOCA","168"],["TIANGUA","169"],["TRAIRI","170"],["TURURU","171"],
+    ["UBAJARA","172"],["UMARI","173"],["UMIRIM","174"],["URUBURETAMA","175"],["URUOCA","176"],
+    ["VARJOTA","177"],["VARZEA ALEGRE","178"],["VICOSA DO CEARA","179"],["ARARENDA","180"],["CATUNDA","181"],
+    ["CHORO","182"],["FORTIM","183"],["ITAITINGA","184"],["JIJOCA DE JERICOACOARA","185"]
+  ];
+
+  // ---------- helpers ----------
   function log(msg, cls="") {
     const div = document.createElement("div");
     div.textContent = msg;
@@ -167,7 +215,6 @@
     $("btnBaixarRelatorio").disabled = true;
     ultimo = null;
 
-    // pesquisa
     searchResumo.textContent = "";
     searchTable.innerHTML = "";
     searchInput.value = "";
@@ -177,10 +224,6 @@
 
   function digitsOnly(s) {
     return (s ?? "").toString().replace(/\D+/g, "");
-  }
-
-  function padMun(m) {
-    return digitsOnly(m).padStart(3, "0");
   }
 
   function normalize(payload) {
@@ -246,17 +289,9 @@
     }
 
     const cols = [
-      "motivo",
-      "codigo_municipio",
-      "codigo_item",
-      "tipo_item",
-      "descricao_item",
-      "codigo_amparo_legal",
-      "numeto_amparo_legal",
-      "data_amparo_legal",
-      "data_publicacao",
-      "st_extinto_ir",
-      "data_referencia"
+      "motivo","codigo_municipio","codigo_item","tipo_item","descricao_item",
+      "codigo_amparo_legal","numeto_amparo_legal","data_amparo_legal","data_publicacao",
+      "st_extinto_ir","data_referencia"
     ];
 
     tableEl.innerHTML = `
@@ -274,22 +309,18 @@
     lines.push(`MUNICIPIO: ${r.municipio}`);
     lines.push(`CAMPO_CODIGO: ${r.field}`);
     lines.push("");
-
     lines.push("PREFEITURA (1000-1999)");
     lines.push(`Presentes: ${r.presentPrefCount}`);
     lines.push(`Faltando: ${r.prefMissing.length}`);
     lines.push(r.prefMissing.join(", "));
     lines.push("");
-
     lines.push("CAMARA (2000-2999)");
     lines.push(`Presentes: ${r.presentCamCount}`);
     lines.push(`Faltando: ${r.camMissing.length}`);
     lines.push(r.camMissing.join(", "));
     lines.push("");
-
     lines.push("VAZIOS/INVALIDOS");
     lines.push(`Quantidade: ${r.vazios.length}`);
-
     return lines.join("\n");
   }
 
@@ -302,7 +333,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  // ---------- Abas ----------
+  // ---------- tabs ----------
   function setTab(which) {
     const isF = which === "faltantes";
     tabFaltantes.classList.toggle("hidden", !isF);
@@ -310,18 +341,12 @@
     tabFaltantesBtn.classList.toggle("active", isF);
     tabPesquisarBtn.classList.toggle("active", !isF);
   }
-
   tabFaltantesBtn.addEventListener("click", () => setTab("faltantes"));
   tabPesquisarBtn.addEventListener("click", () => setTab("pesquisar"));
 
-  // ---------- Pesquisa ----------
+  // ---------- pesquisa nos registros ----------
   function buildSearchIndex(rows) {
-    // monta uma string “haystack” por registro (junta tudo)
-    rowsSearchIndex = rows.map(row => {
-      // JSON.stringify já inclui valores de todos campos
-      const haystack = JSON.stringify(row).toLowerCase();
-      return { row, haystack };
-    });
+    rowsSearchIndex = rows.map(row => ({ row, haystack: JSON.stringify(row).toLowerCase() }));
   }
 
   function renderSearchRows(rows) {
@@ -329,26 +354,10 @@
       searchTable.innerHTML = `<thead><tr><th>status</th></tr></thead><tbody><tr><td>Nenhum registro encontrado</td></tr></tbody>`;
       return;
     }
-
-    // colunas úteis primeiro
-    const cols = [
-      "codigo_municipio",
-      "codigo_item",
-      "tipo_item",
-      "descricao_item",
-      "tipo_classificacao",
-      "st_extinto_ir",
-      "data_publicacao",
-      "data_referencia"
-    ];
-
+    const cols = ["codigo_municipio","codigo_item","tipo_item","descricao_item","tipo_classificacao","st_extinto_ir","data_publicacao","data_referencia"];
     searchTable.innerHTML = `
       <thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-      <tbody>
-        ${rows.map(r => `
-          <tr>${cols.map(c => `<td>${r?.[c] ?? ""}</td>`).join("")}</tr>
-        `).join("")}
-      </tbody>
+      <tbody>${rows.map(r => `<tr>${cols.map(c => `<td>${r?.[c] ?? ""}</td>`).join("")}</tr>`).join("")}</tbody>
     `;
   }
 
@@ -361,7 +370,6 @@
       searchTable.innerHTML = "";
       return;
     }
-
     if (!q) {
       searchResumo.textContent = `Total carregado: ${rowsCache.length}. Digite um termo para filtrar.`;
       searchTable.innerHTML = "";
@@ -375,38 +383,98 @@
         if (hits.length >= limit) break;
       }
     }
-
-    searchResumo.textContent = `Termo: "${q}" | Encontrados: ${hits.length} (limite ${limit}) | Total carregado: ${rowsCache.length}`;
+    searchResumo.textContent = `Termo: "${q}" | Encontrados: ${hits.length} (limite ${limit}) | Total: ${rowsCache.length}`;
     renderSearchRows(hits);
   }
 
   let searchTimer = null;
   function scheduleSearch() {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(doSearchNow, 120); // “tempo real” sem travar
+    searchTimer = setTimeout(doSearchNow, 120);
   }
-
   searchInput.addEventListener("input", scheduleSearch);
   searchLimit.addEventListener("input", scheduleSearch);
+  btnLimparBusca.addEventListener("click", () => { searchInput.value = ""; doSearchNow(); });
 
-  btnLimparBusca.addEventListener("click", () => {
-    searchInput.value = "";
-    doSearchNow();
+  // ---------- município: filtro em tempo real ----------
+  function renderMunicipios(filtered, keepValue) {
+    municipioSelect.innerHTML = "";
+    for (const [nome, cod] of filtered) {
+      const opt = document.createElement("option");
+      opt.value = cod;
+      opt.textContent = `${nome} (${cod})`;
+      municipioSelect.appendChild(opt);
+    }
+    // tenta manter seleção anterior se ainda existir
+    if (keepValue && filtered.some(([,c]) => c === keepValue)) {
+      municipioSelect.value = keepValue;
+    } else if (filtered.length) {
+      municipioSelect.value = filtered[0][1];
+    }
+  }
+
+  function normalizeText(s) {
+    return (s || "")
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // remove acentos
+  }
+
+  function filterMunicipios() {
+    const q = normalizeText(municipioSearch.value.trim());
+    const current = municipioSelect.value;
+
+    if (!q) {
+      renderMunicipios(MUNICIPIOS, current);
+      return;
+    }
+
+    const filtered = MUNICIPIOS.filter(([nome, cod]) => {
+      const n = normalizeText(nome);
+      return n.includes(q) || cod.includes(q);
+    });
+
+    renderMunicipios(filtered, current);
+  }
+
+  let munTimer = null;
+  municipioSearch.addEventListener("input", () => {
+    clearTimeout(munTimer);
+    munTimer = setTimeout(filterMunicipios, 80);
   });
 
-  // ---------- Carregar ----------
-  async function carregar() {
-    clearUI();
+  // atalho: Enter no campo de busca -> foca no select
+  municipioSearch.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") municipioSelect.focus();
+  });
 
-    const municipio = padMun($("municipio").value);
-    if (!municipio) { log("⚠️ Informe o município.", "bad"); return; }
+  // ---------- carregar ----------
+  async function carregar() {
+    logEl.textContent = "";
+
+    const municipio = municipioSelect.value;
+    if (!municipio) { log("⚠️ Selecione um município.", "bad"); return; }
+
+    // não limpa municípios/inputs, só o resultado
+    prefResumoEl.textContent = "";
+    camResumoEl.textContent = "";
+    vazioResumoEl.textContent = "";
+    prefTableEl.innerHTML = "";
+    camTableEl.innerHTML = "";
+    vazioTableEl.innerHTML = "";
+    $("btnBaixarRelatorio").disabled = true;
+    ultimo = null;
+
+    searchResumo.textContent = "";
+    searchTable.innerHTML = "";
+    rowsCache = [];
+    rowsSearchIndex = [];
 
     const alvo =
       "https://api.tce.ce.gov.br/index.php/sim/1_0/itens_remuneratorios.json" +
       `?codigo_municipio=${encodeURIComponent(municipio)}`;
 
     const url = `/api/proxy?url=${encodeURIComponent(alvo)}`;
-    log(`🔎 Consultando via proxy...`);
+    log(`🔎 Consultando via proxy... Município: ${municipio}`);
 
     try {
       const resp = await fetch(url);
@@ -446,21 +514,21 @@
       $("btnBaixarRelatorio").disabled = false;
       log("✅ Análise concluída.", "ok");
 
-      // prepara resumo da aba pesquisar
       doSearchNow();
-
     } catch (e) {
       log(`❌ Erro: ${e?.message || e}`, "bad");
     }
   }
 
   $("btnCarregar").addEventListener("click", carregar);
-
   $("btnBaixarRelatorio").addEventListener("click", () => {
     if (!ultimo) return;
-    const txt = buildReportTxt(ultimo);
-    downloadText(`faltantes_itens_remuneratorios_mun${ultimo.municipio}.txt`, txt);
+    downloadText(`faltantes_itens_remuneratorios_mun${ultimo.municipio}.txt`, buildReportTxt(ultimo));
   });
+
+  // init
+  renderMunicipios(MUNICIPIOS, "057"); // começa em Fortaleza (057) por padrão
+  municipioSelect.value = "057";
 </script>
 </body>
 </html>
