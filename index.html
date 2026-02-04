@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SIMAP - Consulta CPF (Agentes Públicos)</title>
+  <title>SIMAP Offline - Baixar e Pesquisar CPF</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
@@ -14,20 +14,15 @@
     table { width:100%; border-collapse:collapse; margin-top:12px; }
     th, td { border:1px solid #ddd; padding:8px; font-size:13px; vertical-align:top; }
     th { background:#fafafa; position:sticky; top:0; }
-    .muted { color:#666; font-size:12px; margin-top:6px; }
   </style>
 </head>
 <body>
-  <h2>SIMAP — Consulta por CPF (Agentes Públicos)</h2>
+  <h2>SIMAP Offline — Baixar dados e pesquisar CPF</h2>
 
   <div class="row">
     <div>
-      <label>Código do município</label>
+      <label>Município</label>
       <input id="municipio" value="176" />
-    </div>
-    <div>
-      <label>CPF (somente números)</label>
-      <input id="cpf" placeholder="00000000000" />
     </div>
     <div>
       <label>Ano inicial</label>
@@ -37,14 +32,18 @@
       <label>Ano final</label>
       <input id="anoFim" type="number" value="2025" />
     </div>
-
-    <button id="btnBuscar">Buscar</button>
-    <button id="btnBaixarJson" disabled>Baixar JSON</button>
-    <button id="btnBaixarCsv" disabled>Baixar CSV</button>
+    <button id="btnBaixar">Baixar e salvar no navegador</button>
+    <button id="btnLimpar">Limpar cache</button>
   </div>
 
-  <div class="muted">
-    A consulta chama <code>/api/agentes-publicos</code> no seu próprio domínio (proxy no Vercel) e espera <b>2s</b> entre anos.
+  <hr />
+
+  <div class="row">
+    <div>
+      <label>CPF para pesquisar</label>
+      <input id="cpf" placeholder="00000000000" />
+    </div>
+    <button id="btnPesquisar">Pesquisar no cache</button>
   </div>
 
   <div id="log"></div>
@@ -55,164 +54,48 @@
   const logEl = $("log");
   const resEl = $("resultado");
 
-  let ultimoResultado = [];
-  let buscando = false;
+  const BASE = "https://api.tce.ce.gov.br/index.php/sim/1_0/agentes_publicos.json";
 
-  function log(msg) {
-    console.log(msg);
-    logEl.textContent += msg + "\n";
-  }
+  function log(msg){ console.log(msg); logEl.textContent += msg + "\n"; }
+  function digits(s){ return (s || "").replace(/\D+/g, ""); }
+  function padMun(m){ return digits(m).padStart(3, "0"); }
+  function exOrc(ano){ return String(ano) + "00"; }
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-  function digits(s) { return (s || "").replace(/\D+/g, ""); }
-  function padMun(m) { return digits(m).padStart(3, "0"); }
-  function exOrc(ano) { return String(ano) + "00"; }
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  // ---------- IndexedDB ----------
+  const DB_NAME = "simap_cache";
+  const DB_VERSION = 1;
+  const STORE = "agentes_publicos"; // key: municipio|exercicio
 
-  async function getJSON(url) {
-    const r = await fetch(url, { method: "GET" });
-    const text = await r.text();
-    if (!r.ok) throw new Error(`HTTP ${r.status}: ${text.slice(0, 250)}`);
-    try { return JSON.parse(text); }
-    catch { throw new Error("Resposta não é JSON"); }
-  }
-
-  function toCSV(rows) {
-    const cols = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
-    const esc = v => {
-      const s = (v == null) ? "" : String(v);
-      const needs = /[",\n;]/.test(s);
-      const safe = s.replaceAll('"', '""');
-      return needs ? `"${safe}"` : safe;
-    };
-    return [cols.join(";"), ...rows.map(r => cols.map(c => esc(r[c])).join(";"))].join("\n");
-  }
-
-  function download(name, text, mime) {
-    const blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-
-  function render(rows) {
-    if (!rows.length) {
-      resEl.innerHTML = "<p><b>Nenhum registro encontrado.</b></p>";
-      return;
-    }
-
-    const cols = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
-
-    const thead = `<thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>`;
-    const tbody = `<tbody>${
-      rows.map(r => `<tr>${cols.map(c => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`).join("")
-    }</tbody>`;
-
-    resEl.innerHTML = `
-      <p><b>Total:</b> ${rows.length} registro(s)</p>
-      <div style="overflow:auto; max-height:70vh;">
-        <table>${thead}${tbody}</table>
-      </div>
-    `;
-  }
-
-  async function buscar() {
-    if (buscando) return;
-    buscando = true;
-
-    logEl.textContent = "";
-    resEl.innerHTML = "";
-    ultimoResultado = [];
-    $("btnBaixarJson").disabled = true;
-    $("btnBaixarCsv").disabled = true;
-    $("btnBuscar").disabled = true;
-
-    try {
-      const municipio = padMun($("municipio").value);
-      const cpf = digits($("cpf").value);
-      const anoIni = parseInt($("anoIni").value, 10);
-      const anoFim = parseInt($("anoFim").value, 10);
-
-      if (cpf.length !== 11) {
-        log("⚠️ CPF inválido (precisa ter 11 dígitos).");
-        return;
-      }
-      if (!anoIni || !anoFim || anoIni > anoFim) {
-        log("⚠️ Intervalo de anos inválido.");
-        return;
-      }
-
-      log(`Município: ${municipio}`);
-      log(`CPF: ${cpf}`);
-      log(`Intervalo: ${anoIni} → ${anoFim}\n`);
-
-      const out = [];
-
-      for (let ano = anoIni; ano <= anoFim; ano++) {
-        const exercicio_orcamento = exOrc(ano);
-
-        const url =
-          `/api/agentes-publicos?codigo_municipio=${encodeURIComponent(municipio)}` +
-          `&exercicio_orcamento=${encodeURIComponent(exercicio_orcamento)}` +
-          `&cpf_servidor=${encodeURIComponent(cpf)}`;
-
-        log(`🔎 Consultando ${ano} (${exercicio_orcamento})...`);
-
-        try {
-          const data = await getJSON(url);
-
-          const rows = Array.isArray(data)
-            ? data
-            : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.result) ? data.result : []));
-
-          log(`  ✅ ${rows.length} registro(s)`);
-
-          for (const r of rows) {
-            out.push({ ano, exercicio_orcamento, codigo_municipio: municipio, cpf_servidor: cpf, ...r });
-          }
-        } catch (e) {
-          log(`  ❌ Erro: ${e.message}`);
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: "key" });
         }
-
-        // ✅ espera 2s entre uma requisição e outra
-        if (ano < anoFim) {
-          log("  ⏳ Aguardando 2s antes da próxima consulta...");
-          await sleep(2000);
-        }
-      }
-
-      ultimoResultado = out;
-
-      log(`\n✅ Concluído. Total acumulado: ${out.length} registro(s).`);
-      render(out);
-
-      $("btnBaixarJson").disabled = out.length === 0;
-      $("btnBaixarCsv").disabled = out.length === 0;
-
-    } finally {
-      $("btnBuscar").disabled = false;
-      buscando = false;
-    }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
   }
 
-  $("btnBuscar").addEventListener("click", buscar);
+  async function idbPut(key, payload) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put({ key, payload, savedAt: Date.now() });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
 
-  $("btnBaixarJson").addEventListener("click", () => {
-    download(
-      `agentes_publicos_${digits($("cpf").value)}_${$("anoIni").value}-${$("anoFim").value}_mun${digits($("municipio").value)}.json`,
-      JSON.stringify(ultimoResultado, null, 2),
-      "application/json;charset=utf-8"
-    );
-  });
-
-  $("btnBaixarCsv").addEventListener("click", () => {
-    download(
-      `agentes_publicos_${digits($("cpf").value)}_${$("anoIni").value}-${$("anoFim").value}_mun${digits($("municipio").value)}.csv`,
-      toCSV(ultimoResultado),
-      "text/csv;charset=utf-8"
-    );
-  });
-</script>
-</body>
-</html>
+  async function idbGet(key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
