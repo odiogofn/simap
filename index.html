@@ -76,7 +76,7 @@
       border:0;
       border-radius: 12px;
       padding: 11px 14px;
-      font-weight: 700;
+      font-weight: 800;
       cursor:pointer;
       transition: transform .06s ease, filter .15s ease, background .15s ease;
       box-shadow: var(--shadow2);
@@ -106,7 +106,7 @@
       padding: 10px 12px;
       box-shadow: var(--shadow2);
     }
-    .log .line{ font-size:13px; line-height:1.4; }
+    .log .line{ font-size:13px; line-height:1.4; white-space:pre-wrap; }
     .ok{ color: #16a34a; }
     .bad{ color: var(--warn); }
 
@@ -118,7 +118,7 @@
       border:1px solid var(--line);
       background:#fff;
       cursor:pointer;
-      font-weight: 800;
+      font-weight: 900;
       color: var(--text);
       box-shadow: var(--shadow2);
       user-select:none;
@@ -145,12 +145,12 @@
     }
     .cardTitle{
       display:flex; align-items:center; gap:10px;
-      font-weight: 900; font-size: 14px; letter-spacing:.2px; margin:0;
+      font-weight: 950; font-size: 14px; letter-spacing:.2px; margin:0;
     }
     .pill{
       font-size:12px; padding: 4px 10px; border-radius: 999px;
       background: var(--soft); border:1px solid var(--line);
-      color: var(--muted); font-weight: 800;
+      color: var(--muted); font-weight: 900;
     }
     .meta{
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -222,7 +222,6 @@
       <div class="tab" id="tabPesquisarBtn"><span class="dot"></span>Pesquisar</div>
     </div>
 
-    <!-- ABA: FALTANTES -->
     <div id="tabFaltantes">
       <div class="grid">
         <div class="card">
@@ -257,7 +256,6 @@
       </div>
     </div>
 
-    <!-- ABA: PESQUISAR -->
     <div id="tabPesquisar" class="hidden">
       <div class="card section">
         <div class="cardHeader">
@@ -363,6 +361,7 @@
   }
   function resetLog(){ logEl.innerHTML = ""; }
 
+  // municipio filter
   function normalizeText(s) {
     return (s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
@@ -388,6 +387,7 @@
   municipioSearch.addEventListener("input", () => { clearTimeout(munTimer); munTimer = setTimeout(filterMunicipios, 90); });
   municipioSearch.addEventListener("keydown", (e) => { if (e.key === "Enter") municipioSelect.focus(); });
 
+  // analyze
   function digitsOnly(s){ return (s ?? "").toString().replace(/\D+/g, ""); }
   function normalizeApi(payload){
     if (payload?.rsp && Array.isArray(payload.rsp._content)) return payload.rsp._content;
@@ -453,6 +453,7 @@
     `;
   }
 
+  // download
   function buildReportTxt(r) {
     const lines = [];
     lines.push(`MUNICIPIO: ${r.municipio}`);
@@ -526,7 +527,7 @@
   searchLimit.addEventListener("input", scheduleSearch);
   btnLimparBusca.addEventListener("click", () => { searchInput.value=""; doSearchNow(); });
 
-  // ----------- PARSE ROBUSTO (aqui está o ajuste principal) -----------
+  // ✅ JSON ROBUSTO (com clone)
   async function fetchJsonRobusto(url) {
     const resp = await fetch(url);
 
@@ -535,12 +536,12 @@
       throw new Error(`HTTP ${resp.status} :: ${errText.slice(0, 300)}`);
     }
 
-    // tenta json() primeiro
+    const clone = resp.clone();
+
     try {
       return await resp.json();
     } catch {
-      // fallback: lê texto e tenta "limpar"
-      const text = await resp.text().catch(() => "");
+      const text = await clone.text().catch(() => "");
       const cleaned = text.replace(/^\uFEFF/, "").trim();
       const firstBrace = cleaned.indexOf("{");
       const lastBrace  = cleaned.lastIndexOf("}");
@@ -554,7 +555,6 @@
     }
   }
 
-  // load
   async function carregar() {
     resetLog();
 
