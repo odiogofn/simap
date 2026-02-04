@@ -13,17 +13,15 @@
       --line:#e5e7eb;
       --soft:#f1f5f9;
       --brand:#2563eb;
-      --brand2:#22c55e;
       --warn:#ef4444;
       --shadow: 0 10px 30px rgba(2,6,23,.08);
       --shadow2: 0 6px 16px rgba(2,6,23,.08);
       --radius: 16px;
     }
-
     *{ box-sizing:border-box; }
     body{
       margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background: radial-gradient(900px 500px at 20% 0%, rgba(37,99,235,.10), transparent 60%),
                   radial-gradient(700px 400px at 90% 10%, rgba(34,197,94,.10), transparent 60%),
                   var(--bg);
@@ -40,20 +38,9 @@
       border-radius: calc(var(--radius) + 6px);
       box-shadow: var(--shadow2);
     }
-    .title{
-      display:flex; flex-direction:column; gap:2px;
-    }
-    h1{
-      margin:0;
-      font-size:18px;
-      letter-spacing: .2px;
-    }
-    .subtitle{
-      margin:0;
-      color:var(--muted);
-      font-size:12px;
-      line-height: 1.35;
-    }
+    .title{ display:flex; flex-direction:column; gap:2px; }
+    h1{ margin:0; font-size:18px; letter-spacing: .2px; }
+    .subtitle{ margin:0; color:var(--muted); font-size:12px; line-height: 1.35; }
 
     .controls{
       display:grid;
@@ -61,7 +48,7 @@
       gap:10px;
       align-items:end;
       width: 100%;
-      max-width: 820px;
+      max-width: 860px;
     }
     .field label{
       display:block;
@@ -89,7 +76,7 @@
       border:0;
       border-radius: 12px;
       padding: 11px 14px;
-      font-weight: 600;
+      font-weight: 700;
       cursor:pointer;
       transition: transform .06s ease, filter .15s ease, background .15s ease;
       box-shadow: var(--shadow2);
@@ -107,13 +94,9 @@
       color: var(--text);
     }
     .btnGhost:hover{ background: var(--soft); }
-    .btn[disabled]{ opacity:.5; cursor:not-allowed; box-shadow:none; }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; box-shadow:none; }
 
-    .hint{
-      margin: 12px 4px 0;
-      color: var(--muted);
-      font-size: 12px;
-    }
+    .hint{ margin: 12px 4px 0; color: var(--muted); font-size: 12px; }
 
     .log{
       margin-top:12px;
@@ -127,10 +110,7 @@
     .ok{ color: #16a34a; }
     .bad{ color: var(--warn); }
 
-    .tabs{
-      display:flex; gap:10px; flex-wrap:wrap;
-      margin-top: 14px;
-    }
+    .tabs{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px; }
     .tab{
       display:flex; align-items:center; gap:8px;
       padding: 10px 12px;
@@ -138,7 +118,7 @@
       border:1px solid var(--line);
       background:#fff;
       cursor:pointer;
-      font-weight: 600;
+      font-weight: 800;
       color: var(--text);
       box-shadow: var(--shadow2);
       user-select:none;
@@ -147,18 +127,10 @@
       border-color: rgba(37,99,235,.35);
       box-shadow: 0 0 0 4px rgba(37,99,235,.12), var(--shadow2);
     }
-    .dot{
-      width:8px; height:8px; border-radius:999px;
-      background: rgba(100,116,139,.5);
-    }
+    .dot{ width:8px; height:8px; border-radius:999px; background: rgba(100,116,139,.5); }
     .tab.active .dot{ background: var(--brand); }
 
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-    }
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
 
     .card{
       border:1px solid var(--line);
@@ -169,70 +141,42 @@
     }
     .cardHeader{
       display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      margin-bottom: 10px;
+      gap:10px; margin-bottom: 10px;
     }
     .cardTitle{
       display:flex; align-items:center; gap:10px;
-      font-weight: 800;
-      font-size: 14px;
-      letter-spacing:.2px;
-      margin:0;
+      font-weight: 900; font-size: 14px; letter-spacing:.2px; margin:0;
     }
     .pill{
-      font-size:12px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: var(--soft);
-      border:1px solid var(--line);
-      color: var(--muted);
-      font-weight: 700;
+      font-size:12px; padding: 4px 10px; border-radius: 999px;
+      background: var(--soft); border:1px solid var(--line);
+      color: var(--muted); font-weight: 800;
     }
     .meta{
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
-      color: var(--muted);
+      font-size: 12px; color: var(--muted);
     }
 
     .tableWrap{
-      max-height: 52vh;
-      overflow:auto;
-      border-radius: 12px;
-      border: 1px solid var(--line);
+      max-height: 52vh; overflow:auto;
+      border-radius: 12px; border: 1px solid var(--line);
     }
-    table{
-      width:100%;
-      border-collapse: collapse;
-      background:#fff;
-    }
-    th, td{
-      border-bottom:1px solid var(--line);
-      padding: 10px 10px;
-      font-size: 13px;
-      vertical-align: top;
-    }
+    table{ width:100%; border-collapse: collapse; background:#fff; }
+    th, td{ border-bottom:1px solid var(--line); padding: 10px 10px; font-size: 13px; vertical-align: top; }
     th{
-      position: sticky;
-      top: 0;
-      background: #fbfbfe;
-      z-index: 1;
-      text-align: left;
-      font-size: 12px;
-      color: var(--muted);
-      letter-spacing: .3px;
-      text-transform: uppercase;
+      position: sticky; top: 0;
+      background: #fbfbfe; z-index: 1;
+      text-align: left; font-size: 12px;
+      color: var(--muted); letter-spacing: .3px; text-transform: uppercase;
     }
     tr:hover td{ background: rgba(37,99,235,.04); }
 
-    .section{
-      margin-top:14px;
-    }
+    .section{ margin-top:14px; }
     .hidden{ display:none; }
 
-    /* responsive */
     @media (max-width: 980px){
       header{ flex-direction: column; align-items: stretch; }
-      .controls{ grid-template-columns: 1fr 1fr; }
+      .controls{ grid-template-columns: 1fr 1fr; max-width:none; }
       .grid{ grid-template-columns: 1fr; }
     }
     @media (max-width: 560px){
@@ -275,7 +219,7 @@
 
     <div class="tabs">
       <div class="tab active" id="tabFaltantesBtn"><span class="dot"></span>Faltantes</div>
-      <div class="tab" id="tabPesquisarBtn"><span class="dot"></span>Pesquisar descrição</div>
+      <div class="tab" id="tabPesquisarBtn"><span class="dot"></span>Pesquisar</div>
     </div>
 
     <!-- ABA: FALTANTES -->
@@ -338,13 +282,11 @@
         </div>
       </div>
     </div>
-
   </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
 
-  // UI refs
   const logEl = $("log");
   const prefResumoEl = $("prefResumo");
   const camResumoEl  = $("camResumo");
@@ -368,12 +310,10 @@
   const municipioSearch = $("municipioSearch");
   const municipioSelect = $("municipioSelect");
 
-  // Data
-  let ultimo = null;
   let rowsCache = [];
   let rowsSearchIndex = [];
+  let ultimoRelatorio = null;
 
-  // Municípios (nome -> código)
   const MUNICIPIOS = [
     ["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
     ["ALCANTARAS","007"],["ALTANEIRA","008"],["ALTO SANTO","009"],["AMONTADA","010"],["ANTONINA DO NORTE","011"],
@@ -414,7 +354,6 @@
     ["CHORO","182"],["FORTIM","183"],["ITAITINGA","184"],["JIJOCA DE JERICOACOARA","185"]
   ];
 
-  // ---------- helpers ----------
   function addLog(msg, kind="") {
     const d = document.createElement("div");
     d.className = "line" + (kind ? " " + kind : "");
@@ -424,15 +363,38 @@
   }
   function resetLog(){ logEl.innerHTML = ""; }
 
-  function digitsOnly(s) { return (s ?? "").toString().replace(/\D+/g, ""); }
+  function normalizeText(s) {
+    return (s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+  function renderMunicipios(list, keepValue) {
+    municipioSelect.innerHTML = "";
+    for (const [nome, cod] of list) {
+      const opt = document.createElement("option");
+      opt.value = cod;
+      opt.textContent = `${nome} (${cod})`;
+      municipioSelect.appendChild(opt);
+    }
+    if (keepValue && list.some(([,c]) => c === keepValue)) municipioSelect.value = keepValue;
+    else if (list.length) municipioSelect.value = list[0][1];
+  }
+  function filterMunicipios() {
+    const q = normalizeText(municipioSearch.value.trim());
+    const cur = municipioSelect.value;
+    if (!q) return renderMunicipios(MUNICIPIOS, cur);
+    const filtered = MUNICIPIOS.filter(([nome, cod]) => normalizeText(nome).includes(q) || cod.includes(q));
+    renderMunicipios(filtered, cur);
+  }
+  let munTimer = null;
+  municipioSearch.addEventListener("input", () => { clearTimeout(munTimer); munTimer = setTimeout(filterMunicipios, 90); });
+  municipioSearch.addEventListener("keydown", (e) => { if (e.key === "Enter") municipioSelect.focus(); });
 
-  function normalize(payload) {
+  function digitsOnly(s){ return (s ?? "").toString().replace(/\D+/g, ""); }
+  function normalizeApi(payload){
     if (payload?.rsp && Array.isArray(payload.rsp._content)) return payload.rsp._content;
     if (Array.isArray(payload)) return payload;
     return [];
   }
-
-  function expected(from, to) { const out=[]; for(let i=from;i<=to;i++) out.push(i); return out; }
+  function expected(from, to){ const out=[]; for(let i=from;i<=to;i++) out.push(i); return out; }
 
   function analyze(rows, municipio) {
     const field = "codigo_item";
@@ -520,7 +482,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  // ---------- tabs ----------
+  // tabs
   function setTab(which) {
     const isF = which === "faltantes";
     tabFaltantes.classList.toggle("hidden", !isF);
@@ -531,10 +493,8 @@
   tabFaltantesBtn.addEventListener("click", () => setTab("faltantes"));
   tabPesquisarBtn.addEventListener("click", () => setTab("pesquisar"));
 
-  // ---------- search index ----------
-  function buildSearchIndex(rows) {
-    rowsSearchIndex = rows.map(row => ({ row, haystack: JSON.stringify(row).toLowerCase() }));
-  }
+  // search
+  function buildSearchIndex(rows){ rowsSearchIndex = rows.map(row => ({ row, haystack: JSON.stringify(row).toLowerCase() })); }
   function renderSearchRows(rows) {
     if (!rows.length) {
       searchTable.innerHTML = `<thead><tr><th>status</th></tr></thead><tbody><tr><td>Nenhum registro encontrado</td></tr></tbody>`;
@@ -561,41 +521,43 @@
     renderSearchRows(hits);
   }
   let searchTimer = null;
-  function scheduleSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(doSearchNow, 120); }
+  function scheduleSearch(){ clearTimeout(searchTimer); searchTimer = setTimeout(doSearchNow, 120); }
   searchInput.addEventListener("input", scheduleSearch);
   searchLimit.addEventListener("input", scheduleSearch);
   btnLimparBusca.addEventListener("click", () => { searchInput.value=""; doSearchNow(); });
 
-  // ---------- municipio filter ----------
-  function normalizeText(s) {
-    return (s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  }
-  function renderMunicipios(filtered, keepValue) {
-    municipioSelect.innerHTML = "";
-    for (const [nome, cod] of filtered) {
-      const opt = document.createElement("option");
-      opt.value = cod;
-      opt.textContent = `${nome} (${cod})`;
-      municipioSelect.appendChild(opt);
-    }
-    if (keepValue && filtered.some(([,c]) => c === keepValue)) municipioSelect.value = keepValue;
-    else if (filtered.length) municipioSelect.value = filtered[0][1];
-  }
-  function filterMunicipios() {
-    const q = normalizeText(municipioSearch.value.trim());
-    const cur = municipioSelect.value;
-    if (!q) return renderMunicipios(MUNICIPIOS, cur);
-    const filtered = MUNICIPIOS.filter(([nome, cod]) => normalizeText(nome).includes(q) || cod.includes(q));
-    renderMunicipios(filtered, cur);
-  }
-  let munTimer = null;
-  municipioSearch.addEventListener("input", () => { clearTimeout(munTimer); munTimer = setTimeout(filterMunicipios, 90); });
-  municipioSearch.addEventListener("keydown", (e) => { if (e.key === "Enter") municipioSelect.focus(); });
+  // ----------- PARSE ROBUSTO (aqui está o ajuste principal) -----------
+  async function fetchJsonRobusto(url) {
+    const resp = await fetch(url);
 
-  // ---------- load ----------
-  let ultimoRelatorio = null;
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => "");
+      throw new Error(`HTTP ${resp.status} :: ${errText.slice(0, 300)}`);
+    }
+
+    // tenta json() primeiro
+    try {
+      return await resp.json();
+    } catch {
+      // fallback: lê texto e tenta "limpar"
+      const text = await resp.text().catch(() => "");
+      const cleaned = text.replace(/^\uFEFF/, "").trim();
+      const firstBrace = cleaned.indexOf("{");
+      const lastBrace  = cleaned.lastIndexOf("}");
+
+      if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+        throw new Error("Resposta não parece JSON válido (sem chaves).");
+      }
+
+      const jsonText = cleaned.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonText);
+    }
+  }
+
+  // load
   async function carregar() {
     resetLog();
+
     prefResumoEl.textContent = "";
     camResumoEl.textContent  = "";
     vazioResumoEl.textContent = "";
@@ -612,25 +574,11 @@
     const url  = "/api/proxy?url=" + encodeURIComponent(alvo);
 
     addLog(`🔎 Consultando via proxy... Município ${municipio}`);
-    try{
-      const resp = await fetch(url);
-      const text = await resp.text();
 
-      if (!resp.ok) {
-        addLog(`❌ Proxy retornou HTTP ${resp.status}`, "bad");
-        addLog(text.slice(0, 900), "bad");
-        return;
-      }
+    try {
+      const payload = await fetchJsonRobusto(url);
+      const rows = normalizeApi(payload);
 
-      let payload;
-      try { payload = JSON.parse(text); }
-      catch {
-        addLog("❌ O proxy não retornou JSON.", "bad");
-        addLog(text.slice(0, 900), "bad");
-        return;
-      }
-
-      const rows = normalize(payload);
       rowsCache = rows;
       buildSearchIndex(rows);
 
@@ -648,11 +596,11 @@
       renderVazios(vazioTableEl, result.vazios);
 
       $("btnBaixarRelatorio").disabled = false;
-      addLog("✅ Pronto! Você pode ir na aba Pesquisar e digitar INSS.", "ok");
+      addLog("✅ Pronto! Vá na aba Pesquisar e digite INSS.", "ok");
 
       doSearchNow();
-    } catch(e){
-      addLog(`❌ Erro: ${e?.message || e}`, "bad");
+    } catch (e) {
+      addLog(`❌ Erro: ${String(e?.message || e)}`, "bad");
     }
   }
 
