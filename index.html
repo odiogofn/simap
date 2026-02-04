@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Consulta CPF - Agentes Públicos (Vercel)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+    label { display:block; font-size:12px; margin-bottom:4px; }
+    input { padding:8px; min-width:180px; }
+    button { padding:10px 12px; cursor:pointer; }
+    #log { white-space:pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ddd; margin-top:12px; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { border:1px solid #ddd; padding:8px; font-size:13px; vertical-align:top; }
+    th { background:#fafafa; position:sticky; top:0; }
+  </style>
+</head>
+<body>
+  <h2>Consulta por CPF — intervalo de anos (via Vercel Function)</h2>
+
+  <div class="row">
+    <div>
+      <label>Município</label>
+      <input id="municipio" value="176" />
+    </div>
+    <div>
+      <label>CPF (11 dígitos)</label>
+      <input id="cpf" placeholder="00000000000" />
+    </div>
+    <div>
+      <label>Ano inicial</label>
+      <input id="anoIni" type="number" value="2020" />
+    </div>
+    <div>
+      <label>Ano final</label>
+      <input id="anoFim" type="number" value="2025" />
+    </div>
+    <button id="btnBuscar">Buscar</button>
+    <button id="btnBaixarJson" disabled>Baixar JSON</button>
+    <button id="btnBaixarCsv" disabled>Baixar CSV</button>
+  </div>
+
+  <div id="log"></div>
+  <div id="resultado"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const logEl = $("log");
+  const resEl = $("resultado");
+  let ultimoResultado = [];
+
+  function log(msg){ logEl.textContent += msg + "\n"; }
+  function digits(s){ return (s||"").replace(/\D+/g,""); }
+  function padMun(m){ return digits(m).padStart(3,"0"); }
+  function exOrc(ano){ return String(ano) + "00"; }
+
+  async function getJSON(url){
+    const r = await fetch(url);
+    const text = await r.text();
+    if(!r.ok) throw new Error(`HTTP ${r.status}: ${text.slice(0,200)}`);
+    return JSON.parse(text);
+  }
+
+  function toCSV(rows){
+    const cols = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
+    const esc = v => {
+      const s = (v==null) ? "" : String(v);
+      const needs = /[",\n;]/.test(s);
+      const safe = s.replaceAll('"','""');
+      return needs ? `"${safe}"` : safe;
+    };
+    return [cols.join(";"), ...rows.map(r => cols.map(c => esc(r[c])).join(";"))].join("\n");
+  }
+
+  function download(name, text, mime){
+    const blob = new Blob([text], {type: mime || "text/plain;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function render(rows){
+    if(!rows.length){ resEl.innerHTML = "<p><b>Nenhum registro encontrado.</b></p>"; return; }
+    const cols = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
+    const thead = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead>`;
+    const tbody = `<tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${r[c] ?? ""}</td>`).join("")}</tr>`).join("")}</tbody>`;
+    resEl.innerHTML = `<p><b>Total:</b> ${rows.length}</p><div style="overflow:auto; max-height:70vh;"><table>${thead}${tbody}</table></div>`;
+  }
+
+  async function buscar(){
+    logEl.textContent = "";
+    resEl.innerHTML = "";
+    ultimoResultado = [];
+    $("btnBaixarJson").disabled = true;
+    $("btnBaixarCsv").disabled = true;
+
+    const municipio = padMun($("municipio").value);
+    const cpf = digits($("cpf").value);
+    const anoIni = parseInt($("anoIni").value, 10);
+    const anoFim = parseInt($("anoFim").value, 10);
+
+    if(cpf.length !== 11){ log("⚠️ CPF inválido (precisa ter 11 dígitos)."); return; }
+    if(!anoIni || !anoFim || anoIni > anoFim){ log("⚠️ Intervalo de anos inválido."); return; }
+
+    log(`Município: ${municipio}`);
+    log(`CPF: ${cpf}`);
+    log(`Intervalo: ${anoIni} → ${anoFim}\n`);
+
+    const out = [];
+
+    for(let ano=anoIni; ano<=anoFim; ano++){
+      const exercicio_orcamento = exOrc(ano);
+      const url = `/api/agentes-publicos?codigo_municipio=${encodeURIComponent(municipio)}&exercicio_orcamento=${encodeURIComponent(exercicio_orcamento)}&cpf_servidor=${encodeURIComponent(cpf)}`;
+
+      log(`🔎 Consultando ${ano} (${exercicio_orcamento})...`);
+      try{
+        const data = await getJSON(url);
+
+        const rows = Array.isArray(data)
+          ? data
+          : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.result) ? data.result : []));
+
+        log(`  ✅ ${rows.length} registro(s)`);
+
+        for(const r of rows){
+          out.push({ ano, exercicio_orcamento, codigo_municipio: municipio, cpf_servidor: cpf, ...r });
+        }
+      }catch(e){
+        log(`  ❌ Erro: ${e.message}`);
+      }
+    }
+
+    ultimoResultado = out;
+    log(`\n✅ Concluído. Total acumulado: ${out.length} registro(s).`);
+    render(out);
+
+    $("btnBaixarJson").disabled = out.length === 0;
+    $("btnBaixarCsv").disabled = out.length === 0;
+  }
+
+  $("btnBuscar").addEventListener("click", buscar);
+
+  $("btnBaixarJson").addEventListener("click", () => {
+    download(
+      `agentes_publicos_${digits($("cpf").va
