@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Auditor de Rubricas</title>
+<title>Auditor de Rubricas - TCE CE</title>
 
 <style>
 
@@ -16,7 +16,7 @@ h1{
 margin-bottom:10px;
 }
 
-select,input,button{
+button,select,input{
 padding:8px;
 margin:5px;
 }
@@ -42,14 +42,14 @@ background:white;
 
 th,td{
 border:1px solid #ddd;
-padding:8px;
+padding:6px;
 }
 
 th{
 background:#eee;
 }
 
-#barraContainer{
+#barraBox{
 width:100%;
 height:20px;
 background:#ddd;
@@ -64,61 +64,100 @@ transition:width .3s;
 }
 
 </style>
-
 </head>
+
 <body>
 
-<h1>Auditor de Rubricas</h1>
+<h1>Auditor de Rubricas TCE-CE</h1>
 
 <select id="municipio"></select>
 
-<button onclick="carregar()">Consultar</button>
+<button onclick="carregarMunicipio()">Carregar Município</button>
+<button onclick="carregarTodos()">Carregar TODOS Municípios</button>
 
-<div id="barraContainer">
-<div id="barra"></div>
-</div>
-
+<div id="barraBox"><div id="barra"></div></div>
 <div id="status"></div>
 
 <div class="tabs">
-<button onclick="abrirTab('prefeitura')">Prefeitura</button>
-<button onclick="abrirTab('camara')">Câmara</button>
-<button onclick="abrirTab('buscar')">Buscar</button>
+<button onclick="abrirTab('pref')">Prefeitura livres</button>
+<button onclick="abrirTab('cam')">Câmara livres</button>
+<button onclick="abrirTab('busca')">Buscar</button>
+<button onclick="abrirTab('compare')">Comparar</button>
 </div>
 
-<div id="prefeitura" class="tab">
-<h2>Prefeitura (1000-1999 disponíveis)</h2>
+<!-- PREFEITURA -->
+
+<div id="pref" class="tab">
+
+<h3>Códigos livres Prefeitura (1000-1999)</h3>
+
 <table>
 <thead><tr><th>Código</th></tr></thead>
 <tbody id="prefBody"></tbody>
 </table>
+
 </div>
 
-<div id="camara" class="tab">
-<h2>Câmara (2000-2999 disponíveis)</h2>
+<!-- CAMARA -->
+
+<div id="cam" class="tab">
+
+<h3>Códigos livres Câmara (2000-2999)</h3>
+
 <table>
 <thead><tr><th>Código</th></tr></thead>
 <tbody id="camBody"></tbody>
 </table>
+
 </div>
 
-<div id="buscar" class="tab">
+<!-- BUSCA -->
 
-<input id="busca" placeholder="buscar código ou descrição">
+<div id="busca" class="tab">
+
+<input id="campoBusca" placeholder="Buscar código ou descrição">
 
 <table>
 <thead>
 <tr>
+<th>Município</th>
 <th>Código</th>
 <th>Descrição</th>
 </tr>
 </thead>
+
 <tbody id="buscaBody"></tbody>
+
+</table>
+
+</div>
+
+<!-- COMPARAÇÃO -->
+
+<div id="compare" class="tab">
+
+<input id="codigoCompare" placeholder="Código ex: 1001">
+
+<button onclick="comparar()">Comparar</button>
+
+<table>
+
+<thead>
+<tr>
+<th>Município</th>
+<th>Descrição</th>
+</tr>
+</thead>
+
+<tbody id="compareBody"></tbody>
+
 </table>
 
 </div>
 
 <script>
+
+const API_BASE="https://api-dados-abertos.tce.ce.gov.br/itens_remuneratorios"
 
 const MUNICIPIOS=[
 ["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
@@ -169,52 +208,51 @@ o.textContent=m[0]
 sel.appendChild(o)
 })
 
-let rubricas=[]
+let banco={}
 
-async function carregar(){
+async function carregarMunicipio(){
 
-const municipio=sel.value
-if(!municipio){alert("Selecione município");return}
+const cod=sel.value
 
-rubricas=[]
+const rubricas=await consultar(cod)
 
-let deslocamento=0
-const quantidade=500
+banco[cod]=rubricas
 
-const barra=document.getElementById("barra")
-const status=document.getElementById("status")
+status.innerText="Município carregado: "+rubricas.length+" rubricas"
 
-while(true){
-
-status.innerText="Consultando deslocamento "+deslocamento
-
-const resp=await fetch(`proxy.js?municipio=${municipio}&deslocamento=${deslocamento}&quantidade=${quantidade}`)
-
-const dados=await resp.json()
-
-if(!dados.length) break
-
-rubricas=rubricas.concat(dados)
-
-deslocamento+=quantidade
-
-barra.style.width=Math.min(100,(rubricas.length/2000)*100)+"%"
+calcularLivres(rubricas)
 
 }
 
-status.innerText="Rubricas carregadas: "+rubricas.length
+async function consultar(cod){
 
-processar()
+let lista=[]
+
+for(let d=0;d<=1000;d+=100){
+
+const url=`${API_BASE}?codigo_municipio=${cod}&quantidade=100&deslocamento=${d}`
+
+const resp=await fetch(url)
+
+const json=await resp.json()
+
+const dados=json.data.data
+
+lista.push(...dados)
+
+if(lista.length>=json.data.total) break
 
 }
 
-function processar(){
+return lista
+
+}
+
+function calcularLivres(rubricas){
 
 const set=new Set()
 
-rubricas.forEach(r=>{
-set.add(parseInt(r.codigo_item))
-})
+rubricas.forEach(r=>set.add(r.codigo_item))
 
 const pref=document.getElementById("prefBody")
 const cam=document.getElementById("camBody")
@@ -224,23 +262,19 @@ cam.innerHTML=""
 
 for(let i=1000;i<=1999;i++){
 
-if(!set.has(i)){
-pref.innerHTML+=`<tr><td>${i}</td></tr>`
-}
+if(!set.has(i)) pref.innerHTML+=`<tr><td>${i}</td></tr>`
 
 }
 
 for(let i=2000;i<=2999;i++){
 
-if(!set.has(i)){
-cam.innerHTML+=`<tr><td>${i}</td></tr>`
-}
+if(!set.has(i)) cam.innerHTML+=`<tr><td>${i}</td></tr>`
 
 }
 
 }
 
-document.getElementById("busca").addEventListener("input",e=>{
+document.getElementById("campoBusca").addEventListener("input",e=>{
 
 const q=e.target.value.toLowerCase()
 
@@ -248,7 +282,11 @@ const body=document.getElementById("buscaBody")
 
 body.innerHTML=""
 
-rubricas.filter(r=>{
+Object.entries(banco).forEach(([cod,lista])=>{
+
+const nome=MUNICIPIOS.find(m=>m[1]==cod)[0]
+
+lista.filter(r=>{
 
 return r.codigo_item.toString().includes(q) ||
 (r.descricao_item||"").toLowerCase().includes(q)
@@ -257,8 +295,9 @@ return r.codigo_item.toString().includes(q) ||
 
 body.innerHTML+=`
 <tr>
+<td>${nome}</td>
 <td>${r.codigo_item}</td>
-<td>${r.descricao_item||""}</td>
+<td>${r.descricao_item}</td>
 </tr>
 `
 
@@ -266,11 +305,42 @@ body.innerHTML+=`
 
 })
 
+})
+
+function comparar(){
+
+const cod=document.getElementById("codigoCompare").value
+
+const body=document.getElementById("compareBody")
+
+body.innerHTML=""
+
+Object.entries(banco).forEach(([c,lista])=>{
+
+const nome=MUNICIPIOS.find(m=>m[1]==c)[0]
+
+const r=lista.find(x=>x.codigo_item==cod)
+
+if(r){
+
+body.innerHTML+=`
+<tr>
+<td>${nome}</td>
+<td>${r.descricao_item}</td>
+</tr>
+`
+
+}
+
+})
+
+}
+
 function abrirTab(id){
 
-document.querySelectorAll(".tab").forEach(t=>t.style.display="none")
+document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
 
-document.getElementById(id).style.display="block"
+document.getElementById(id).classList.add("active")
 
 }
 
