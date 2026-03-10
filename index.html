@@ -1,91 +1,30 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-
 <meta charset="UTF-8">
-<title>Auditoria de Rubricas TCE</title>
-
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<title>Consulta de Rubricas</title>
 
 <style>
 
 body{
 font-family:Arial;
-background:#f5f6fa;
-margin:0;
+background:#f4f4f4;
+margin:20px;
 }
 
-.container{
-max-width:1200px;
-margin:auto;
-padding:20px;
-}
-
-header{
-background:white;
-padding:15px;
-border-radius:10px;
-border:1px solid #ddd;
-display:flex;
-gap:10px;
-align-items:center;
+h1{
+margin-bottom:10px;
 }
 
 button{
-padding:10px 14px;
-border-radius:6px;
-border:0;
-background:#2563eb;
-color:white;
-font-weight:bold;
+padding:10px;
+margin-right:5px;
 cursor:pointer;
-}
-
-.progressBox{
-margin-top:10px;
-background:#ddd;
-height:20px;
-border-radius:6px;
-overflow:hidden;
-}
-
-.progressBar{
-height:100%;
-width:0%;
-background:#22c55e;
-transition:width 0.2s;
-}
-
-.tabs{
-display:flex;
-gap:5px;
-margin-top:20px;
-}
-
-.tabBtn{
-padding:10px 15px;
-background:#ddd;
-border-radius:6px;
-cursor:pointer;
-}
-
-.tabBtn.active{
-background:#2563eb;
-color:white;
 }
 
 .tab{
 display:none;
-background:white;
-border:1px solid #ddd;
-border-radius:10px;
-padding:15px;
-margin-top:10px;
+margin-top:20px;
 }
 
 .tab.active{
@@ -95,257 +34,182 @@ display:block;
 table{
 width:100%;
 border-collapse:collapse;
+background:white;
 }
 
 th,td{
+border:1px solid #ddd;
 padding:8px;
-border-bottom:1px solid #eee;
-font-size:13px;
+text-align:left;
 }
 
 th{
-background:#fafafa;
+background:#eee;
 }
 
-.search{
-margin-bottom:10px;
+#barraContainer{
+width:100%;
+height:20px;
+background:#ddd;
+margin-top:10px;
+}
+
+#barra{
+height:100%;
+width:0%;
+background:#4caf50;
+transition:width .3s;
+}
+
+input{
 padding:8px;
 width:300px;
-border-radius:6px;
-border:1px solid #ccc;
-}
-
-.stats{
-margin-top:10px;
-font-size:14px;
+margin-bottom:10px;
 }
 
 </style>
-
 </head>
 
 <body>
 
-<div class="container">
-
-<header>
-
-<select id="municipio" style="width:350px"></select>
+<h1>Consulta de Rubricas</h1>
 
 <button onclick="carregar()">Carregar Rubricas</button>
 
-</header>
-
-<div class="progressBox">
-<div id="progressBar" class="progressBar"></div>
+<div id="barraContainer">
+<div id="barra"></div>
 </div>
 
-<div class="stats" id="stats"></div>
+<div id="status"></div>
 
+<br>
 
-<div class="tabs">
+<button onclick="abrirTab('prefeitura')">Prefeitura</button>
+<button onclick="abrirTab('camara')">Câmara</button>
+<button onclick="abrirTab('buscar')">Buscar Rubrica</button>
 
-<div class="tabBtn active" onclick="openTab(event,'pref')">Prefeitura</div>
-<div class="tabBtn" onclick="openTab(event,'cam')">Câmara</div>
-<div class="tabBtn" onclick="openTab(event,'buscar')">Buscar Rubrica</div>
+<!-- PREFEITURA -->
 
-</div>
+<div id="prefeitura" class="tab">
 
-
-<div id="pref" class="tab active">
-
-<h3>Códigos disponíveis (1000-1999)</h3>
+<h2>Códigos disponíveis Prefeitura (1000-1999)</h2>
 
 <table>
 <thead>
-<tr><th>Código</th></tr>
+<tr>
+<th>Código</th>
+</tr>
 </thead>
+
 <tbody id="prefBody"></tbody>
+
 </table>
 
 </div>
 
+<!-- CAMARA -->
 
-<div id="cam" class="tab">
+<div id="camara" class="tab">
 
-<h3>Códigos disponíveis (2000-2999)</h3>
+<h2>Códigos disponíveis Câmara (2000-2999)</h2>
 
 <table>
 <thead>
-<tr><th>Código</th></tr>
+<tr>
+<th>Código</th>
+</tr>
 </thead>
+
 <tbody id="camBody"></tbody>
+
 </table>
 
 </div>
 
+<!-- BUSCA -->
 
 <div id="buscar" class="tab">
 
-<input id="busca" class="search" placeholder="Buscar por código ou descrição">
+<h2>Buscar Rubrica</h2>
+
+<input id="busca" placeholder="Digite código ou descrição">
 
 <table>
+
 <thead>
 <tr>
 <th>Código</th>
 <th>Descrição</th>
 </tr>
 </thead>
+
 <tbody id="buscaBody"></tbody>
+
 </table>
 
 </div>
-
-</div>
-
 
 <script>
 
 let rubricas=[]
 
-function openTab(evt,id){
+function abrirTab(id){
 
 document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
-document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("active"))
 
 document.getElementById(id).classList.add("active")
-evt.target.classList.add("active")
 
 }
-
-  const MUNICIPIOS = [
-    ["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
-    ["ALCANTARAS","007"],["ALTANEIRA","008"],["ALTO SANTO","009"],["AMONTADA","010"],["ANTONINA DO NORTE","011"],
-    ["APUIARES","012"],["AQUIRAZ","013"],["ARACATI","014"],["ARACOIABA","015"],["ARARIPE","016"],
-    ["ARATUBA","017"],["ARNEIROZ","018"],["ASSARE","019"],["AURORA","020"],["BAIXIO","021"],
-    ["BANABUIU","022"],["BARBALHA","023"],["BARREIRA","024"],["BARRO","025"],["BARROQUINHA","026"],
-    ["BATURITE","027"],["BEBERIBE","028"],["BELA CRUZ","029"],["BOA VIAGEM","030"],["BREJO SANTO","031"],
-    ["CAMOCIM","032"],["CAMPOS SALES","033"],["CANINDE","034"],["CAPISTRANO","035"],["CARIDADE","036"],
-    ["CARIRE","037"],["CARIRIACU","038"],["CARIUS","039"],["CARNAUBAL","040"],["CASCAVEL","041"],
-    ["CATARINA","042"],["CAUCAIA","043"],["CEDRO","044"],["CHAVAL","045"],["CHOROZINHO","046"],
-    ["COREAU","047"],["CRATEUS","048"],["CRATO","049"],["CROATA","050"],["CRUZ","051"],
-    ["DEPUTADO IRAPUAN PINHEIRO","052"],["ERERE","053"],["EUSEBIO","054"],["FARIAS BRITO","055"],["FORQUILHA","056"],
-    ["FORTALEZA","057"],["FRECHEIRINHA","058"],["GENERAL SAMPAIO","059"],["GRACA","060"],["GRANJA","061"],
-    ["GRANJEIRO","062"],["GROAIRAS","063"],["GUAIUBA","064"],["GUARACIABA DO NORTE","065"],["GUARAMIRANGA","066"],
-    ["HIDROLANDIA","067"],["HORIZONTE","068"],["IBARETAMA","069"],["IBIAPINA","070"],["IBICUITINGA","071"],
-    ["ICAPUI","072"],["ICO","073"],["IGUATU","074"],["INDEPENDENCIA","075"],["IPAPORANGA","076"],
-    ["IPAUMIRIM","077"],["IPU","078"],["IPUEIRAS","079"],["IRACEMA","080"],["IRAUCUBA","081"],
-    ["ITAICABA","082"],["ITAPAJE","083"],["ITAPIPOCA","084"],["ITAPIUNA","085"],["ITAREMA","086"],
-    ["ITATIRA","087"],["JAGUARETAMA","088"],["JAGUARIBARA","089"],["JAGUARIBE","090"],["JAGUARUANA","091"],
-    ["JARDIM","092"],["JATI","093"],["JUAZEIRO DO NORTE","094"],["JUCAS","095"],["LAVRAS DA MANGABEIRA","096"],
-    ["LIMOEIRO DO NORTE","097"],["MADALENA","098"],["MARACANAU","099"],["MARANGUAPE","100"],["MARCO","101"],
-    ["MARTINOPOLE","102"],["MASSAPE","103"],["MAURITI","104"],["MERUOCA","105"],["MILAGRES","106"],
-    ["MILHA","107"],["MIRAIMA","108"],["MISSAO VELHA","109"],["MUCAMBO","110"],["MOMBACA","111"],
-    ["MONSENHOR TABOSA","112"],["MORADA NOVA","113"],["MORAUJO","114"],["MORRINHOS","115"],["MULUNGU","116"],
-    ["NOVA OLINDA","117"],["NOVA RUSSAS","118"],["NOVO ORIENTE","119"],["OCARA","120"],["OROS","121"],
-    ["PACAJUS","122"],["PACATUBA","123"],["PACOTI","124"],["PACUJA","125"],["PALHANO","126"],
-    ["PALMACIA","127"],["PARACURU","128"],["PARAIPABA","129"],["PARAMBU","130"],["PARAMOTI","131"],
-    ["PEDRA BRANCA","132"],["PENAFORTE","133"],["PENTECOSTE","134"],["PEREIRO","135"],["PINDORETAMA","136"],
-    ["PIQUET CARNEIRO","137"],["PIRES FERREIRA","138"],["PORANGA","139"],["PORTEIRAS","140"],["POTENGI","141"],
-    ["POTIRETAMA","142"],["QUITERIANOPOLIS","143"],["QUIXADA","144"],["QUIXELO","145"],["QUIXERAMOBIM","146"],
-    ["QUIXERE","147"],["REDENCAO","148"],["RERIUTABA","149"],["RUSSAS","150"],["SABOEIRO","151"],
-    ["SALITRE","152"],["SANTANA DO ACARAU","153"],["SANTANA DO CARIRI","154"],["SANTA QUITERIA","155"],["SAO BENEDITO","156"],
-    ["SAO GONCALO DO AMARANTE","157"],["SAO JOAO DO JAGUARIBE","158"],["SAO LUIS DO CURU","159"],["SENADOR POMPEU","160"],["SENADOR SA","161"],
-    ["SOBRAL","162"],["SOLONOPOLE","163"],["TABULEIRO DO NORTE","164"],["TAMBORIL","165"],["TARRAFAS","166"],
-    ["TAUA","167"],["TEJUCUOCA","168"],["TIANGUA","169"],["TRAIRI","170"],["TURURU","171"],
-    ["UBAJARA","172"],["UMARI","173"],["UMIRIM","174"],["URUBURETAMA","175"],["URUOCA","176"],
-    ["VARJOTA","177"],["VARZEA ALEGRE","178"],["VICOSA DO CEARA","179"],["ARARENDA","180"],["CATUNDA","181"],
-    ["CHORO","182"],["FORTIM","183"],["ITAITINGA","184"],["JIJOCA DE JERICOACOARA","185"]
-  ]
-
-const select=document.getElementById("municipio")
-
-MUNICIPIOS
-.sort((a,b)=>a[0].localeCompare(b[0]))
-.forEach(([nome,codigo])=>{
-
-const opt=document.createElement("option")
-opt.value=codigo
-opt.textContent=`${codigo} - ${nome}`
-select.appendChild(opt)
-
-})
-
-$(document).ready(function(){
-
-$('#municipio').select2({
-placeholder:"Digite o município"
-})
-
-})
 
 async function carregar(){
 
-rubricas=[]
+const barra=document.getElementById("barra")
+const status=document.getElementById("status")
 
-const municipio=document.getElementById("municipio").value
+barra.style.width="10%"
+status.innerText="Consultando proxy..."
 
-const primeira = await fetch(`/api/proxy?codigo_municipio=${municipio}&quantidade=100&deslocamento=0`)
-const j = await primeira.json()
+try{
 
-const total = j.data.total
-const paginas = Math.ceil(total/100)
+const resp=await fetch("proxy.js")
 
-rubricas.push(...j.data.data)
+barra.style.width="40%"
 
-let carregadas=1
+const dados=await resp.json()
 
-const progress=document.getElementById("progressBar")
+barra.style.width="70%"
 
-progress.style.width=(carregadas/paginas*100)+"%"
-
-const promisses=[]
-
-for(let i=1;i<paginas;i++){
-
-const deslocamento=i*100
-
-promisses.push(
-
-fetch(`/api/proxy?codigo_municipio=${municipio}&quantidade=100&deslocamento=${deslocamento}`)
-.then(r=>r.json())
-.then(d=>{
-
-rubricas.push(...d.data.data)
-
-carregadas++
-
-progress.style.width=(carregadas/paginas*100)+"%"
-
-})
-
-)
-
-}
-
-await Promise.all(promisses)
+rubricas=dados
 
 processar()
+
+barra.style.width="100%"
+
+status.innerText="Rubricas carregadas: "+rubricas.length
+
+}catch(e){
+
+console.error(e)
+
+status.innerText="Erro ao buscar rubricas"
+
+}
 
 }
 
 function processar(){
 
-const codigos = new Set()
+const existentes=new Set()
 
 rubricas.forEach(r=>{
 
 const c=parseInt(r.codigo_item)
 
-if(!isNaN(c)) codigos.add(c)
+if(!isNaN(c)){
+existentes.add(c)
+}
 
 })
-
-const pref=[]
-const cam=[]
-
-for(let i=1000;i<=1999;i++){
-if(!codigos.has(i)) pref.push(i)
-}
-
-for(let i=2000;i<=2999;i++){
-if(!codigos.has(i)) cam.push(i)
-}
 
 const prefBody=document.getElementById("prefBody")
 const camBody=document.getElementById("camBody")
@@ -353,26 +217,31 @@ const camBody=document.getElementById("camBody")
 prefBody.innerHTML=""
 camBody.innerHTML=""
 
-pref.forEach(c=>{
+for(let i=1000;i<=1999;i++){
+
+if(!existentes.has(i)){
+
 const tr=document.createElement("tr")
-tr.innerHTML=`<td>${c}</td>`
+tr.innerHTML=`<td>${i}</td>`
+
 prefBody.appendChild(tr)
-})
 
-cam.forEach(c=>{
+}
+
+}
+
+for(let i=2000;i<=2999;i++){
+
+if(!existentes.has(i)){
+
 const tr=document.createElement("tr")
-tr.innerHTML=`<td>${c}</td>`
-camBody.appendChild(tr)
-})
+tr.innerHTML=`<td>${i}</td>`
 
-document.getElementById("stats").innerHTML=
-`
-Rubricas carregadas: ${rubricas.length}
-<br>
-Códigos disponíveis prefeitura: ${pref.length}
-<br>
-Códigos disponíveis câmara: ${cam.length}
-`
+camBody.appendChild(tr)
+
+}
+
+}
 
 }
 
@@ -380,20 +249,20 @@ document.getElementById("busca").addEventListener("input",()=>{
 
 const q=document.getElementById("busca").value.toLowerCase()
 
-const res=rubricas.filter(r=>{
-
-const cod=(r.codigo_item||"").toString()
-const desc=(r.descricao_item||"").toLowerCase()
-
-return cod.includes(q)||desc.includes(q)
-
-})
-
 const tbody=document.getElementById("buscaBody")
 
 tbody.innerHTML=""
 
-res.forEach(r=>{
+rubricas
+.filter(r=>{
+
+const codigo=(r.codigo_item||"").toString()
+const desc=(r.descricao_item||"").toLowerCase()
+
+return codigo.includes(q) || desc.includes(q)
+
+})
+.forEach(r=>{
 
 const tr=document.createElement("tr")
 
