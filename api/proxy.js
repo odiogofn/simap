@@ -15,7 +15,6 @@ export default async function handler(req, res) {
 
   const quantidade = 100;
   let deslocamento = 0;
-
   let resultadoFinal = [];
 
   try {
@@ -28,28 +27,25 @@ export default async function handler(req, res) {
         `&quantidade=${quantidade}` +
         `&deslocamento=${deslocamento}`;
 
-      const resp = await fetch(url);
+      const resp = await fetch(url, {
+        headers: { "accept": "application/json" }
+      });
 
       if (!resp.ok) {
+        const txt = await resp.text();
         return res.status(502).json({
-          error: "Erro na API",
-          status: resp.status
+          error: "Erro na API do TCE",
+          detalhe: txt
         });
       }
 
-      const json = await resp.json();
+      const dados = await resp.json();
 
-      // tenta encontrar onde está o array
-      let dados = [];
+      if (!Array.isArray(dados) || dados.length === 0) {
+        break;
+      }
 
-      if (Array.isArray(json)) dados = json;
-      else if (Array.isArray(json.data)) dados = json.data;
-      else if (Array.isArray(json.itens)) dados = json.itens;
-      else if (Array.isArray(json.resultados)) dados = json.resultados;
-
-      if (dados.length === 0) break;
-
-      resultadoFinal.push(...dados);
+      resultadoFinal = resultadoFinal.concat(dados);
 
       if (dados.length < quantidade) break;
 
