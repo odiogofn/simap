@@ -315,20 +315,40 @@ processar()
 
 function processar(){
 
-let pref=[]
-let cam=[]
+const codigosExistentes = new Set()
 
 rubricas.forEach(r=>{
 
-const c=parseInt(r.codigo_item)
+if(r.codigo_item){
 
-if(c>=1000 && c<=1999) pref.push(c)
-if(c>=2000 && c<=2999) cam.push(c)
+codigosExistentes.add(parseInt(r.codigo_item))
+
+}
 
 })
 
-const prefMissing=range(1000,1999).filter(x=>!pref.includes(x))
-const camMissing=range(2000,2999).filter(x=>!cam.includes(x))
+const prefMissing=[]
+const camMissing=[]
+
+for(let i=1000;i<=1999;i++){
+
+if(!codigosExistentes.has(i)){
+
+prefMissing.push(i)
+
+}
+
+}
+
+for(let i=2000;i<=2999;i++){
+
+if(!codigosExistentes.has(i)){
+
+camMissing.push(i)
+
+}
+
+}
 
 const prefBody=document.getElementById("prefBody")
 const camBody=document.getElementById("camBody")
@@ -353,7 +373,6 @@ camBody.appendChild(tr)
 })
 
 }
-
 document.getElementById("busca").addEventListener("input",()=>{
 
 const q=document.getElementById("busca").value.toLowerCase()
