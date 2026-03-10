@@ -1,316 +1,109 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SIMAP — Itens Remuneratórios</title>
-  <style>
-    :root{
-      --bg:#f7f8fc;
-      --card:#ffffff;
-      --text:#0f172a;
-      --muted:#64748b;
-      --line:#e5e7eb;
-      --soft:#f1f5f9;
-      --brand:#2563eb;
-      --warn:#ef4444;
-      --shadow: 0 10px 30px rgba(2,6,23,.08);
-      --shadow2: 0 6px 16px rgba(2,6,23,.08);
-      --radius: 16px;
-    }
-    *{ box-sizing:border-box; }
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: radial-gradient(900px 500px at 20% 0%, rgba(37,99,235,.10), transparent 60%),
-                  radial-gradient(700px 400px at 90% 10%, rgba(34,197,94,.10), transparent 60%),
-                  var(--bg);
-      color:var(--text);
-    }
-    .wrap{ max-width:1200px; margin: 22px auto 36px; padding: 0 16px; }
+<meta charset="UTF-8">
+<title>SIMAP — Itens Remuneratórios</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-    header{
-      display:flex; gap:14px; align-items:center; justify-content:space-between;
-      padding: 14px 14px;
-      border:1px solid var(--line);
-      background: rgba(255,255,255,.75);
-      backdrop-filter: blur(10px);
-      border-radius: calc(var(--radius) + 6px);
-      box-shadow: var(--shadow2);
-    }
-    .title{ display:flex; flex-direction:column; gap:2px; }
-    h1{ margin:0; font-size:18px; letter-spacing: .2px; }
-    .subtitle{ margin:0; color:var(--muted); font-size:12px; line-height: 1.35; }
+<style>
 
-    .controls{
-      display:grid;
-      grid-template-columns: 1.2fr 1.2fr auto auto;
-      gap:10px;
-      align-items:end;
-      width: 100%;
-      max-width: 860px;
-    }
-    .field label{
-      display:block;
-      font-size:12px;
-      color:var(--muted);
-      margin:0 0 6px;
-    }
-    .input, select{
-      width:100%;
-      border:1px solid var(--line);
-      background: #fff;
-      color:var(--text);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size:14px;
-      outline:none;
-      box-shadow: 0 1px 0 rgba(2,6,23,.02);
-    }
-    .input:focus, select:focus{
-      border-color: rgba(37,99,235,.55);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
-    }
+body{
+font-family:Arial;
+background:#f3f4f6;
+margin:0;
+padding:20px;
+}
 
-    .btn{
-      border:0;
-      border-radius: 12px;
-      padding: 11px 14px;
-      font-weight: 900;
-      cursor:pointer;
-      transition: transform .06s ease, filter .15s ease, background .15s ease;
-      box-shadow: var(--shadow2);
-      white-space: nowrap;
-    }
-    .btn:active{ transform: translateY(1px); }
-    .btnPrimary{
-      background: linear-gradient(135deg, var(--brand), #4f46e5);
-      color:white;
-    }
-    .btnPrimary:hover{ filter: brightness(1.03); }
-    .btnGhost{
-      background:#fff;
-      border:1px solid var(--line);
-      color: var(--text);
-    }
-    .btnGhost:hover{ background: var(--soft); }
-    .btn[disabled]{ opacity:.55; cursor:not-allowed; box-shadow:none; }
+.wrap{
+max-width:1200px;
+margin:auto;
+}
 
-    .hint{ margin: 12px 4px 0; color: var(--muted); font-size: 12px; }
+button{
+padding:10px 14px;
+border:0;
+border-radius:6px;
+cursor:pointer;
+background:#2563eb;
+color:#fff;
+font-weight:bold;
+}
 
-    .log{
-      margin-top:12px;
-      border:1px solid var(--line);
-      background: #fff;
-      border-radius: var(--radius);
-      padding: 10px 12px;
-      box-shadow: var(--shadow2);
-    }
-    .log .line{ font-size:13px; line-height:1.4; white-space:pre-wrap; }
-    .ok{ color: #16a34a; }
-    .bad{ color: var(--warn); }
+input,select{
+padding:10px;
+border:1px solid #ccc;
+border-radius:6px;
+}
 
-    .tabs{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px; }
-    .tab{
-      display:flex; align-items:center; gap:8px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      border:1px solid var(--line);
-      background:#fff;
-      cursor:pointer;
-      font-weight: 950;
-      color: var(--text);
-      box-shadow: var(--shadow2);
-      user-select:none;
-    }
-    .tab.active{
-      border-color: rgba(37,99,235,.35);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.12), var(--shadow2);
-    }
-    .dot{ width:8px; height:8px; border-radius:999px; background: rgba(100,116,139,.5); }
-    .tab.active .dot{ background: var(--brand); }
+.tableWrap{
+max-height:400px;
+overflow:auto;
+border:1px solid #ddd;
+}
 
-    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+table{
+width:100%;
+border-collapse:collapse;
+}
 
-    .card{
-      border:1px solid var(--line);
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 12px 12px;
-      box-shadow: var(--shadow);
-    }
-    .cardHeader{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px; margin-bottom: 10px;
-    }
-    .cardTitle{
-      display:flex; align-items:center; gap:10px;
-      font-weight: 1000; font-size: 14px; letter-spacing:.2px; margin:0;
-    }
-    .pill{
-      font-size:12px; padding: 4px 10px; border-radius: 999px;
-      background: var(--soft); border:1px solid var(--line);
-      color: var(--muted); font-weight: 950;
-    }
-    .meta{
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px; color: var(--muted);
-    }
+th,td{
+border-bottom:1px solid #eee;
+padding:6px;
+font-size:13px;
+}
 
-    .tableWrap{
-      max-height: 52vh; overflow:auto;
-      border-radius: 12px; border: 1px solid var(--line);
-    }
-    table{ width:100%; border-collapse: collapse; background:#fff; }
-    th, td{ border-bottom:1px solid var(--line); padding: 10px 10px; font-size: 13px; vertical-align: top; }
-    th{
-      position: sticky; top: 0;
-      background: #fbfbfe; z-index: 1;
-      text-align: left; font-size: 12px;
-      color: var(--muted); letter-spacing: .3px; text-transform: uppercase;
-    }
-    tr:hover td{ background: rgba(37,99,235,.04); }
+th{
+background:#fafafa;
+position:sticky;
+top:0;
+}
 
-    .section{ margin-top:14px; }
-    .hidden{ display:none; }
-
-    @media (max-width: 980px){
-      header{ flex-direction: column; align-items: stretch; }
-      .controls{ grid-template-columns: 1fr 1fr; max-width:none; }
-      .grid{ grid-template-columns: 1fr; }
-    }
-    @media (max-width: 560px){
-      .controls{ grid-template-columns: 1fr; }
-    }
-  </style>
+</style>
 </head>
 
 <body>
-  <div class="wrap">
-    <header>
-      <div class="title">
-        <h1>SIMAP — Itens Remuneratórios</h1>
-        <p class="subtitle">
-          Carrega via proxy (Vercel), mostra faltantes (1000–1999 / 2000–2999), vazios e pesquisa “INSS” em tempo real.
-        </p>
-      </div>
 
-      <div class="controls">
-        <div class="field">
-          <label>Buscar município</label>
-          <input id="municipioSearch" class="input" placeholder="Digite: fortaleza, sobral, juazeiro..." />
-        </div>
+<div class="wrap">
 
-        <div class="field">
-          <label>Município</label>
-          <select id="municipioSelect"></select>
-        </div>
+<h2>Itens Remuneratórios</h2>
 
-        <button id="btnCarregar" class="btn btnPrimary">Carregar</button>
-        <button id="btnBaixarRelatorio" class="btn btnGhost" disabled>Baixar TXT</button>
-      </div>
-    </header>
+<input id="municipioSearch" placeholder="Buscar município">
 
-    <div class="hint">
-      Regras: <b>1000–1999</b> Prefeitura · <b>2000–2999</b> Câmara · Campo: <code>codigo_item</code>.
-    </div>
+<select id="municipioSelect"></select>
 
-    <div id="log" class="log"></div>
+<button id="btnCarregar">Carregar</button>
 
-    <div class="tabs">
-      <div class="tab active" id="tabFaltantesBtn"><span class="dot"></span>Faltantes</div>
-      <div class="tab" id="tabPesquisarBtn"><span class="dot"></span>Pesquisar</div>
-    </div>
+<button id="btnBaixarRelatorio" disabled>Baixar TXT</button>
 
-    <div id="tabFaltantes">
-      <div class="grid">
-        <div class="card">
-          <div class="cardHeader">
-            <div class="cardTitle">Prefeitura <span class="pill">1000–1999</span></div>
-            <div id="prefResumo" class="meta"></div>
-          </div>
-          <div class="tableWrap">
-            <table id="prefTable"></table>
-          </div>
-        </div>
+<hr>
 
-        <div class="card">
-          <div class="cardHeader">
-            <div class="cardTitle">Câmara <span class="pill">2000–2999</span></div>
-            <div id="camResumo" class="meta"></div>
-          </div>
-          <div class="tableWrap">
-            <table id="camTable"></table>
-          </div>
-        </div>
-      </div>
+<div id="log"></div>
 
-      <div class="card section">
-        <div class="cardHeader">
-          <div class="cardTitle">Vazios / inválidos <span class="pill">sempre</span></div>
-          <div id="vazioResumo" class="meta"></div>
-        </div>
-        <div class="tableWrap" style="max-height: 44vh;">
-          <table id="vazioTable"></table>
-        </div>
-      </div>
-    </div>
+<h3>Prefeitura (1000-1999)</h3>
+<div class="tableWrap">
+<table id="prefTable"></table>
+</div>
 
-    <div id="tabPesquisar" class="hidden">
-      <div class="card section">
-        <div class="cardHeader">
-          <div class="cardTitle">Busca em tempo real <span class="pill">qualquer campo</span></div>
-          <div id="searchResumo" class="meta"></div>
-        </div>
+<h3>Câmara (2000-2999)</h3>
+<div class="tableWrap">
+<table id="camTable"></table>
+</div>
 
-        <div class="controls" style="max-width:none; grid-template-columns: 1.2fr .6fr auto;">
-          <div class="field">
-            <label>Termo (ex: INSS)</label>
-            <input id="searchInput" class="input" placeholder="Digite para filtrar..." />
-          </div>
-          <div class="field">
-            <label>Limite</label>
-            <input id="searchLimit" class="input" type="number" value="300" />
-          </div>
-          <button id="btnLimparBusca" class="btn btnGhost">Limpar</button>
-        </div>
+<h3>Vazios</h3>
+<div class="tableWrap">
+<table id="vazioTable"></table>
+</div>
 
-        <div class="tableWrap" style="max-height: 70vh; margin-top: 10px;">
-          <table id="searchTable"></table>
-        </div>
-      </div>
-    </div>
-  </div>
+<h3>Pesquisar</h3>
+
+<input id="searchInput" placeholder="ex: INSS">
+<input id="searchLimit" type="number" value="300">
+
+<table id="searchTable"></table>
+
+</div>
 
 <script>
-  const $ = (id) => document.getElementById(id);
-
-  const logEl = $("log");
-  const prefResumoEl = $("prefResumo");
-  const camResumoEl  = $("camResumo");
-  const vazioResumoEl = $("vazioResumo");
-
-  const prefTableEl = $("prefTable");
-  const camTableEl  = $("camTable");
-  const vazioTableEl = $("vazioTable");
-
-  const tabFaltantesBtn = $("tabFaltantesBtn");
-  const tabPesquisarBtn = $("tabPesquisarBtn");
-  const tabFaltantes = $("tabFaltantes");
-  const tabPesquisar = $("tabPesquisar");
-
-  const searchInput = $("searchInput");
-  const searchLimit = $("searchLimit");
-  const btnLimparBusca = $("btnLimparBusca");
-  const searchResumo = $("searchResumo");
-  const searchTable = $("searchTable");
-
-  const municipioSearch = $("municipioSearch");
-  const municipioSelect = $("municipioSelect");
-
-  let rowsCache = [];
-  let rowsSearchIndex = [];
-  let ultimoRelatorio = null;
 
   const MUNICIPIOS = [
     ["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
@@ -352,240 +145,143 @@
     ["CHORO","182"],["FORTIM","183"],["ITAITINGA","184"],["JIJOCA DE JERICOACOARA","185"]
   ];
 
-  function addLog(msg, kind="") {
-    const d = document.createElement("div");
-    d.className = "line" + (kind ? " " + kind : "");
-    d.textContent = msg;
-    logEl.appendChild(d);
-    console.log(msg);
-  }
-  function resetLog(){ logEl.innerHTML = ""; }
+const municipioSelect = document.getElementById("municipioSelect");
+const municipioSearch = document.getElementById("municipioSearch");
 
-  function normalizeText(s) {
-    return (s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  }
-  function renderMunicipios(list, keepValue) {
-    municipioSelect.innerHTML = "";
-    for (const [nome, cod] of list) {
-      const opt = document.createElement("option");
-      opt.value = cod;
-      opt.textContent = `${nome} (${cod})`;
-      municipioSelect.appendChild(opt);
-    }
-    if (keepValue && list.some(([,c]) => c === keepValue)) municipioSelect.value = keepValue;
-    else if (list.length) municipioSelect.value = list[0][1];
-  }
-  function filterMunicipios() {
-    const q = normalizeText(municipioSearch.value.trim());
-    const cur = municipioSelect.value;
-    if (!q) return renderMunicipios(MUNICIPIOS, cur);
-    const filtered = MUNICIPIOS.filter(([nome, cod]) => normalizeText(nome).includes(q) || cod.includes(q));
-    renderMunicipios(filtered, cur);
-  }
-  let munTimer = null;
-  municipioSearch.addEventListener("input", () => { clearTimeout(munTimer); munTimer = setTimeout(filterMunicipios, 90); });
-  municipioSearch.addEventListener("keydown", (e) => { if (e.key === "Enter") municipioSelect.focus(); });
+function renderMunicipios(list){
+municipioSelect.innerHTML="";
+for(const [nome,cod] of list){
+const o=document.createElement("option");
+o.value=cod;
+o.textContent=nome+" ("+cod+")";
+municipioSelect.appendChild(o);
+}
+}
 
-  function digitsOnly(s){ return (s ?? "").toString().replace(/\D+/g, ""); }
-  function normalizeApi(payload){
-    if (payload?.rsp && Array.isArray(payload.rsp._content)) return payload.rsp._content;
-    if (Array.isArray(payload)) return payload;
-    return [];
-  }
-  function expected(from, to){ const out=[]; for(let i=from;i<=to;i++) out.push(i); return out; }
+renderMunicipios(MUNICIPIOS);
 
-  function analyze(rows, municipio) {
-    const field = "codigo_item";
-    const prefFrom=1000, prefTo=1999;
-    const camFrom=2000, camTo=2999;
+municipioSearch.addEventListener("input",()=>{
+const q=municipioSearch.value.toUpperCase();
+const f=MUNICIPIOS.filter(m=>m[0].includes(q));
+renderMunicipios(f);
+});
 
-    const presentPref = new Set();
-    const presentCam  = new Set();
-    const vazios = [];
+let rowsCache=[];
 
-    for (const r of rows) {
-      const raw = r?.[field];
-      const d = digitsOnly(raw);
+function digitsOnly(s){
+return (s||"").toString().replace(/\D+/g,"");
+}
 
-      if (!d) { vazios.push({ motivo: "vazio", codigo_item: raw ?? "", ...r }); continue; }
+function expected(from,to){
+let a=[];
+for(let i=from;i<=to;i++)a.push(i);
+return a;
+}
 
-      const n = Number(d);
-      if (!Number.isFinite(n)) { vazios.push({ motivo: "nao-numerico", codigo_item: raw ?? "", ...r }); continue; }
-      if (n === 0) { vazios.push({ motivo: "zero", codigo_item: raw ?? "", ...r }); continue; }
+function analyze(rows){
 
-      if (n >= prefFrom && n <= prefTo) presentPref.add(n);
-      else if (n >= camFrom && n <= camTo) presentCam.add(n);
-    }
+let pref=new Set();
+let cam=new Set();
+let vazios=[];
 
-    return {
-      municipio,
-      field,
-      prefMissing: expected(prefFrom, prefTo).filter(n => !presentPref.has(n)),
-      camMissing: expected(camFrom, camTo).filter(n => !presentCam.has(n)),
-      vazios,
-      presentPrefCount: presentPref.size,
-      presentCamCount: presentCam.size
-    };
-  }
+for(const r of rows){
 
-  function renderMissing(tableEl, missing) {
-    tableEl.innerHTML = `
-      <thead><tr><th>codigo_faltando</th></tr></thead>
-      <tbody>${missing.map(n => `<tr><td>${n}</td></tr>`).join("")}</tbody>
-    `;
-  }
+let raw=r.codigo_item;
+let d=digitsOnly(raw);
 
-  function renderVazios(tableEl, vazios, maxRows=300) {
-    if (!vazios.length) {
-      tableEl.innerHTML = `<thead><tr><th>status</th></tr></thead><tbody><tr><td>Sem vazios/ inválidos</td></tr></tbody>`;
-      return;
-    }
-    const cols = ["motivo","codigo_municipio","codigo_item","tipo_item","descricao_item","data_publicacao","st_extinto_ir","data_referencia"];
-    tableEl.innerHTML = `
-      <thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-      <tbody>
-        ${vazios.slice(0, maxRows).map(r => `
-          <tr>${cols.map(c => `<td>${r?.[c] ?? ""}</td>`).join("")}</tr>
-        `).join("")}
-      </tbody>
-    `;
-  }
+if(!d){
+vazios.push(r);
+continue;
+}
 
-  function buildReportTxt(r) {
-    const lines = [];
-    lines.push(`MUNICIPIO: ${r.municipio}`);
-    lines.push(`CAMPO_CODIGO: ${r.field}`);
-    lines.push("");
-    lines.push("PREFEITURA (1000-1999)");
-    lines.push(`Presentes: ${r.presentPrefCount}`);
-    lines.push(`Faltando: ${r.prefMissing.length}`);
-    lines.push(r.prefMissing.join(", "));
-    lines.push("");
-    lines.push("CAMARA (2000-2999)");
-    lines.push(`Presentes: ${r.presentCamCount}`);
-    lines.push(`Faltando: ${r.camMissing.length}`);
-    lines.push(r.camMissing.join(", "));
-    lines.push("");
-    lines.push("VAZIOS/INVALIDOS");
-    lines.push(`Quantidade: ${r.vazios.length}`);
-    return lines.join("\n");
-  }
+let n=Number(d);
 
-  function downloadText(filename, text) {
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
+if(n>=1000 && n<=1999)pref.add(n);
+if(n>=2000 && n<=2999)cam.add(n);
 
-  function setTab(which) {
-    const isF = which === "faltantes";
-    tabFaltantes.classList.toggle("hidden", !isF);
-    tabPesquisar.classList.toggle("hidden", isF);
-    tabFaltantesBtn.classList.toggle("active", isF);
-    tabPesquisarBtn.classList.toggle("active", !isF);
-  }
-  tabFaltantesBtn.addEventListener("click", () => setTab("faltantes"));
-  tabPesquisarBtn.addEventListener("click", () => setTab("pesquisar"));
+}
 
-  function buildSearchIndex(rows){ rowsSearchIndex = rows.map(row => ({ row, haystack: JSON.stringify(row).toLowerCase() })); }
-  function renderSearchRows(rows) {
-    if (!rows.length) {
-      searchTable.innerHTML = `<thead><tr><th>status</th></tr></thead><tbody><tr><td>Nenhum registro encontrado</td></tr></tbody>`;
-      return;
-    }
-    const cols = ["codigo_municipio","codigo_item","tipo_item","descricao_item","tipo_classificacao","st_extinto_ir","data_publicacao","data_referencia"];
-    searchTable.innerHTML = `
-      <thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-      <tbody>${rows.map(r => `<tr>${cols.map(c => `<td>${r?.[c] ?? ""}</td>`).join("")}</tr>`).join("")}</tbody>
-    `;
-  }
-  function doSearchNow() {
-    const q = (searchInput.value || "").trim().toLowerCase();
-    const limit = Math.max(1, Math.min(5000, parseInt(searchLimit.value || "300", 10)));
+return{
+prefMissing:expected(1000,1999).filter(n=>!pref.has(n)),
+camMissing:expected(2000,2999).filter(n=>!cam.has(n)),
+vazios
+};
 
-    if (!rowsCache.length) { searchResumo.textContent = "Carregue os dados primeiro."; searchTable.innerHTML = ""; return; }
-    if (!q) { searchResumo.textContent = `Total carregado: ${rowsCache.length}. Digite um termo.`; searchTable.innerHTML = ""; return; }
+}
 
-    const hits = [];
-    for (const item of rowsSearchIndex) {
-      if (item.haystack.includes(q)) { hits.push(item.row); if (hits.length >= limit) break; }
-    }
-    searchResumo.textContent = `Termo: "${q}" · ${hits.length} resultado(s) (limite ${limit})`;
-    renderSearchRows(hits);
-  }
-  let searchTimer = null;
-  function scheduleSearch(){ clearTimeout(searchTimer); searchTimer = setTimeout(doSearchNow, 120); }
-  searchInput.addEventListener("input", scheduleSearch);
-  searchLimit.addEventListener("input", scheduleSearch);
-  btnLimparBusca.addEventListener("click", () => { searchInput.value=""; doSearchNow(); });
+function renderMissing(el,list){
 
-  async function carregar() {
-    resetLog();
+el.innerHTML=
+"<tr><th>codigo</th></tr>"+
+list.map(v=>"<tr><td>"+v+"</td></tr>").join("");
 
-    prefResumoEl.textContent = "";
-    camResumoEl.textContent  = "";
-    vazioResumoEl.textContent = "";
-    prefTableEl.innerHTML = "";
-    camTableEl.innerHTML  = "";
-    vazioTableEl.innerHTML = "";
-    $("btnBaixarRelatorio").disabled = true;
-    ultimoRelatorio = null;
+}
 
-    const municipio = municipioSelect.value;
-    if (!municipio) { addLog("⚠️ Selecione um município.", "bad"); return; }
+function renderRows(el,rows){
 
-    const alvo = "https://api.tce.ce.gov.br/index.php/sim/1_0/itens_remuneratorios.json?codigo_municipio=" + encodeURIComponent(municipio);
-    const url  = "/api/proxy?url=" + encodeURIComponent(alvo);
+if(!rows.length){
+el.innerHTML="<tr><td>Sem dados</td></tr>";
+return;
+}
 
-    addLog(`🔎 Consultando via proxy... Município ${municipio}`);
+let cols=Object.keys(rows[0]);
 
-    try {
-      const resp = await fetch(url);
-      const payload = await resp.json();
+el.innerHTML=
+"<tr>"+cols.map(c=>"<th>"+c+"</th>").join("")+"</tr>"+
+rows.slice(0,300).map(r=>
+"<tr>"+cols.map(c=>"<td>"+(r[c]??"")+"</td>").join("")+"</tr>"
+).join("");
 
-      if (!resp.ok) {
-        addLog("❌ Proxy retornou erro.", "bad");
-        addLog(JSON.stringify(payload, null, 2).slice(0, 1600), "bad");
-        return;
-      }
+}
 
-      const rows = normalizeApi(payload);
-      rowsCache = rows;
-      buildSearchIndex(rows);
+async function carregar(){
 
-      addLog(`✅ Registros recebidos: ${rows.length}`, "ok");
+const municipio=municipioSelect.value;
 
-      const result = analyze(rows, municipio);
-      ultimoRelatorio = result;
+const url="/api/proxy?codigo_municipio="+municipio;
 
-      prefResumoEl.textContent = `Presentes: ${result.presentPrefCount} · Faltando: ${result.prefMissing.length}`;
-      camResumoEl.textContent  = `Presentes: ${result.presentCamCount} · Faltando: ${result.camMissing.length}`;
-      vazioResumoEl.textContent = `Vazios/Inválidos: ${result.vazios.length}`;
+document.getElementById("log").innerText="Consultando API...";
 
-      renderMissing(prefTableEl, result.prefMissing);
-      renderMissing(camTableEl, result.camMissing);
-      renderVazios(vazioTableEl, result.vazios);
+const resp=await fetch(url);
 
-      $("btnBaixarRelatorio").disabled = false;
-      addLog("✅ Pronto! Vá na aba Pesquisar e digite INSS.", "ok");
+const rows=await resp.json();
 
-      doSearchNow();
-    } catch (e) {
-      addLog(`❌ Erro: ${String(e?.message || e)}`, "bad");
-    }
-  }
+rowsCache=rows;
 
-  $("btnCarregar").addEventListener("click", carregar);
-  $("btnBaixarRelatorio").addEventListener("click", () => {
-    if (!ultimoRelatorio) return;
-    downloadText(`faltantes_itens_remuneratorios_mun${ultimoRelatorio.municipio}.txt`, buildReportTxt(ultimoRelatorio));
-  });
+document.getElementById("log").innerText="Registros: "+rows.length;
 
-  renderMunicipios(MUNICIPIOS, "057");
-  municipioSelect.value = "057";
+const r=analyze(rows);
+
+renderMissing(document.getElementById("prefTable"),r.prefMissing);
+renderMissing(document.getElementById("camTable"),r.camMissing);
+renderRows(document.getElementById("vazioTable"),r.vazios);
+
+}
+
+document.getElementById("btnCarregar").onclick=carregar;
+
+document.getElementById("searchInput").addEventListener("input",()=>{
+
+let q=document.getElementById("searchInput").value.toLowerCase();
+
+let limit=parseInt(document.getElementById("searchLimit").value||300);
+
+let hits=[];
+
+for(const r of rowsCache){
+
+if(JSON.stringify(r).toLowerCase().includes(q)){
+hits.push(r);
+if(hits.length>=limit)break;
+}
+
+}
+
+renderRows(document.getElementById("searchTable"),hits);
+
+});
+
 </script>
+
 </body>
 </html>
