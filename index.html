@@ -2,28 +2,80 @@
 <html lang="pt-br">
 
 <head>
+
 <meta charset="UTF-8">
-<title>Auditor de Rubricas TCE-CE</title>
+<title>Auditor de Rubricas • TCE CE</title>
 
 <style>
 
 body{
-font-family:Arial;
-margin:20px;
-background:#f5f5f5;
+font-family: "Segoe UI", Arial;
+margin:0;
+background:#f4f6f9;
+color:#2c3e50;
 }
 
-h1{
-margin-bottom:15px;
+header{
+background:#1f2d3d;
+color:white;
+padding:18px 30px;
+font-size:20px;
+font-weight:600;
+letter-spacing:0.5px;
 }
 
-button,select,input{
-padding:8px;
-margin:5px;
+.container{
+padding:25px 35px;
+}
+
+.card{
+background:white;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.08);
+padding:20px;
+margin-bottom:20px;
+}
+
+label{
+font-size:14px;
+font-weight:600;
+}
+
+select,input{
+padding:10px;
+border:1px solid #ccc;
+border-radius:6px;
+margin-left:10px;
+}
+
+button{
+padding:10px 18px;
+border:none;
+background:#1f6feb;
+color:white;
+border-radius:6px;
+cursor:pointer;
+margin-left:10px;
+font-weight:600;
+}
+
+button:hover{
+background:#1558c0;
+}
+
+.tabs{
+margin-top:10px;
 }
 
 .tabs button{
-margin-right:5px;
+background:#e8ecf2;
+color:#2c3e50;
+margin-right:8px;
+}
+
+.tabs button.active{
+background:#1f6feb;
+color:white;
 }
 
 .tab{
@@ -38,30 +90,29 @@ display:block;
 table{
 width:100%;
 border-collapse:collapse;
-background:white;
-}
-
-th,td{
-border:1px solid #ddd;
-padding:6px;
-}
-
-th{
-background:#eee;
-}
-
-#barraBox{
-width:100%;
-height:20px;
-background:#ddd;
 margin-top:10px;
 }
 
-#barra{
-height:100%;
-width:0%;
-background:#4caf50;
-transition:width .3s;
+th,td{
+border-bottom:1px solid #e3e6ea;
+padding:10px;
+font-size:14px;
+}
+
+th{
+background:#f0f2f5;
+text-align:left;
+}
+
+.resultCount{
+margin-top:8px;
+font-size:13px;
+color:#555;
+}
+
+.status{
+margin-top:8px;
+font-size:14px;
 }
 
 </style>
@@ -70,35 +121,47 @@ transition:width .3s;
 
 <body>
 
-<h1>Auditor de Rubricas - TCE CE</h1>
+<header>
+Auditor de Rubricas • Tribunal de Contas do Estado do Ceará
+</header>
+
+<div class="container">
+
+<div class="card">
+
+<label>Município</label>
 
 <select id="municipio"></select>
 
-<button onclick="carregarMunicipio()">Carregar Município</button>
-<button onclick="carregarTodos()">Carregar TODOS Municípios</button>
+<button onclick="carregarMunicipio()">
+Carregar Rubricas
+</button>
 
-<div id="barraBox">
-<div id="barra"></div>
+<div id="status" class="status"></div>
+
 </div>
 
-<div id="status"></div>
+<div class="card">
 
 <div class="tabs">
-<button onclick="abrirTab('pref')">Prefeitura livres</button>
-<button onclick="abrirTab('cam')">Câmara livres</button>
+
+<button onclick="abrirTab('pref')" class="active">Prefeitura</button>
+
+<button onclick="abrirTab('cam')">Câmara</button>
+
 <button onclick="abrirTab('busca')">Buscar</button>
-<button onclick="abrirTab('compare')">Comparar</button>
+
 </div>
 
 <!-- PREF -->
 
-<div id="pref" class="tab">
+<div id="pref" class="tab active">
 
-<h3>Códigos livres Prefeitura (1000-1999)</h3>
+<h3>Códigos livres • Prefeitura (1000-1999)</h3>
 
 <table>
 <thead>
-<tr><th>Código</th></tr>
+<tr><th>Código disponível</th></tr>
 </thead>
 
 <tbody id="prefBody"></tbody>
@@ -111,11 +174,12 @@ transition:width .3s;
 
 <div id="cam" class="tab">
 
-<h3>Códigos livres Câmara (2000-2999)</h3>
+<h3>Códigos livres • Câmara (2000-2999)</h3>
 
 <table>
+
 <thead>
-<tr><th>Código</th></tr>
+<tr><th>Código disponível</th></tr>
 </thead>
 
 <tbody id="camBody"></tbody>
@@ -128,15 +192,21 @@ transition:width .3s;
 
 <div id="busca" class="tab">
 
-<input id="campoBusca" placeholder="Buscar código ou descrição">
+<input
+id="campoBusca"
+placeholder="Digite código ou descrição da rubrica"
+style="width:350px"
+>
+
+<div id="resultCount" class="resultCount"></div>
 
 <table>
 
 <thead>
 <tr>
-<th>Município</th>
 <th>Código</th>
 <th>Descrição</th>
+<th>Tipo</th>
 </tr>
 </thead>
 
@@ -146,26 +216,7 @@ transition:width .3s;
 
 </div>
 
-<!-- COMPARAÇÃO -->
-
-<div id="compare" class="tab">
-
-<input id="codigoCompare" placeholder="Código ex: 1001">
-
-<button onclick="comparar()">Comparar</button>
-
-<table>
-
-<thead>
-<tr>
-<th>Município</th>
-<th>Descrição</th>
-</tr>
-</thead>
-
-<tbody id="compareBody"></tbody>
-
-</table>
+</div>
 
 </div>
 
@@ -174,55 +225,73 @@ transition:width .3s;
 const API="/api/proxy"
 
 const MUNICIPIOS=[
-["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],
-["AIUABA","006"],["ALCANTARAS","007"],["ALTANEIRA","008"],["ALTO SANTO","009"],
-["AMONTADA","010"],["ANTONINA DO NORTE","011"],["APUIARES","012"],
-["AQUIRAZ","013"],["ARACATI","014"],["ARACOIABA","015"],["ARARIPE","016"],
-["ARATUBA","017"],["ARNEIROZ","018"],["ASSARE","019"],["AURORA","020"],
-["BAIXIO","021"],["BANABUIU","022"],["BARBALHA","023"],["BARREIRA","024"],
-["BARRO","025"],["BARROQUINHA","026"],["BATURITE","027"],["BEBERIBE","028"],
-["BELA CRUZ","029"],["BOA VIAGEM","030"],["BREJO SANTO","031"],
-["CAMOCIM","032"],["CAMPOS SALES","033"],["CANINDE","034"],["CAPISTRANO","035"],
-["CARIDADE","036"],["CARIRE","037"],["CARIRIACU","038"],["CARIUS","039"],
-["CARNAUBAL","040"],["CASCAVEL","041"],["CATARINA","042"],["CAUCAIA","043"],
-["CEDRO","044"],["CHAVAL","045"],["CHOROZINHO","046"],["COREAU","047"],
-["CRATEUS","048"],["CRATO","049"],["CROATA","050"],["CRUZ","051"],
-["DEPUTADO IRAPUAN PINHEIRO","052"],["ERERE","053"],["EUSEBIO","054"],
-["FARIAS BRITO","055"],["FORQUILHA","056"],["FORTALEZA","057"]
+["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
+["ALCANTARAS","007"],["ALTANEIRA","008"],["ALTO SANTO","009"],["AMONTADA","010"],["ANTONINA DO NORTE","011"],
+["APUIARES","012"],["AQUIRAZ","013"],["ARACATI","014"],["ARACOIABA","015"],["ARARIPE","016"],
+["ARATUBA","017"],["ARNEIROZ","018"],["ASSARE","019"],["AURORA","020"],["BAIXIO","021"],
+["BANABUIU","022"],["BARBALHA","023"],["BARREIRA","024"],["BARRO","025"],["BARROQUINHA","026"],
+["BATURITE","027"],["BEBERIBE","028"],["BELA CRUZ","029"],["BOA VIAGEM","030"],["BREJO SANTO","031"],
+["CAMOCIM","032"],["CAMPOS SALES","033"],["CANINDE","034"],["CAPISTRANO","035"],["CARIDADE","036"],
+["CARIRE","037"],["CARIRIACU","038"],["CARIUS","039"],["CARNAUBAL","040"],["CASCAVEL","041"],
+["CATARINA","042"],["CAUCAIA","043"],["CEDRO","044"],["CHAVAL","045"],["CHOROZINHO","046"],
+["COREAU","047"],["CRATEUS","048"],["CRATO","049"],["CROATA","050"],["CRUZ","051"],
+["DEPUTADO IRAPUAN PINHEIRO","052"],["ERERE","053"],["EUSEBIO","054"],["FARIAS BRITO","055"],["FORQUILHA","056"],
+["FORTALEZA","057"],["FRECHEIRINHA","058"],["GENERAL SAMPAIO","059"],["GRACA","060"],["GRANJA","061"],
+["GRANJEIRO","062"],["GROAIRAS","063"],["GUAIUBA","064"],["GUARACIABA DO NORTE","065"],["GUARAMIRANGA","066"],
+["HIDROLANDIA","067"],["HORIZONTE","068"],["IBARETAMA","069"],["IBIAPINA","070"],["IBICUITINGA","071"],
+["ICAPUI","072"],["ICO","073"],["IGUATU","074"],["INDEPENDENCIA","075"],["IPAPORANGA","076"],
+["IPAUMIRIM","077"],["IPU","078"],["IPUEIRAS","079"],["IRACEMA","080"],["IRAUCUBA","081"],
+["ITAICABA","082"],["ITAPAJE","083"],["ITAPIPOCA","084"],["ITAPIUNA","085"],["ITAREMA","086"],
+["ITATIRA","087"],["JAGUARETAMA","088"],["JAGUARIBARA","089"],["JAGUARIBE","090"],["JAGUARUANA","091"],
+["JARDIM","092"],["JATI","093"],["JUAZEIRO DO NORTE","094"],["JUCAS","095"],["LAVRAS DA MANGABEIRA","096"],
+["LIMOEIRO DO NORTE","097"],["MADALENA","098"],["MARACANAU","099"],["MARANGUAPE","100"],["MARCO","101"],
+["MARTINOPOLE","102"],["MASSAPE","103"],["MAURITI","104"],["MERUOCA","105"],["MILAGRES","106"],
+["MILHA","107"],["MIRAIMA","108"],["MISSAO VELHA","109"],["MUCAMBO","110"],["MOMBACA","111"],
+["MONSENHOR TABOSA","112"],["MORADA NOVA","113"],["MORAUJO","114"],["MORRINHOS","115"],["MULUNGU","116"],
+["NOVA OLINDA","117"],["NOVA RUSSAS","118"],["NOVO ORIENTE","119"],["OCARA","120"],["OROS","121"],
+["PACAJUS","122"],["PACATUBA","123"],["PACOTI","124"],["PACUJA","125"],["PALHANO","126"],
+["PALMACIA","127"],["PARACURU","128"],["PARAIPABA","129"],["PARAMBU","130"],["PARAMOTI","131"],
+["PEDRA BRANCA","132"],["PENAFORTE","133"],["PENTECOSTE","134"],["PEREIRO","135"],["PINDORETAMA","136"],
+["PIQUET CARNEIRO","137"],["PIRES FERREIRA","138"],["PORANGA","139"],["PORTEIRAS","140"],["POTENGI","141"],
+["POTIRETAMA","142"],["QUITERIANOPOLIS","143"],["QUIXADA","144"],["QUIXELO","145"],["QUIXERAMOBIM","146"],
+["QUIXERE","147"],["REDENCAO","148"],["RERIUTABA","149"],["RUSSAS","150"],["SABOEIRO","151"],
+["SALITRE","152"],["SANTANA DO ACARAU","153"],["SANTANA DO CARIRI","154"],["SANTA QUITERIA","155"],["SAO BENEDITO","156"],
+["SAO GONCALO DO AMARANTE","157"],["SAO JOAO DO JAGUARIBE","158"],["SAO LUIS DO CURU","159"],["SENADOR POMPEU","160"],["SENADOR SA","161"],
+["SOBRAL","162"],["SOLONOPOLE","163"],["TABULEIRO DO NORTE","164"],["TAMBORIL","165"],["TARRAFAS","166"],
+["TAUA","167"],["TEJUCUOCA","168"],["TIANGUA","169"],["TRAIRI","170"],["TURURU","171"],
+["UBAJARA","172"],["UMARI","173"],["UMIRIM","174"],["URUBURETAMA","175"],["URUOCA","176"],
+["VARJOTA","177"],["VARZEA ALEGRE","178"],["VICOSA DO CEARA","179"],["ARARENDA","180"],["CATUNDA","181"],
+["CHORO","182"],["FORTIM","183"],["ITAITINGA","184"],["JIJOCA DE JERICOACOARA","185"]
 ]
 
 const sel=document.getElementById("municipio")
 
 MUNICIPIOS.forEach(m=>{
-
 const op=document.createElement("option")
 op.value=m[1]
 op.textContent=m[0]
 sel.appendChild(op)
-
 })
 
-let banco={}
+let rubricas=[]
 
 async function carregarMunicipio(){
 
-const cod=sel.value
+status.innerText="Carregando rubricas..."
 
-status.innerText="Carregando..."
+const cod=sel.value
 
 const resp=await fetch(`${API}?codigo_municipio=${cod}`)
 
-const dados=await resp.json()
+rubricas=await resp.json()
 
-banco[cod]=dados
+status.innerText=`${rubricas.length} rubricas carregadas`
 
-status.innerText=`${dados.length} rubricas carregadas`
-
-calcularLivres(dados)
+calcularLivres()
 
 }
 
-function calcularLivres(rubricas){
+function calcularLivres(){
 
 const usados=new Set()
 
@@ -233,17 +302,15 @@ camBody.innerHTML=""
 
 for(let i=1000;i<=1999;i++){
 
-if(!usados.has(i)){
+if(!usados.has(i))
 prefBody.innerHTML+=`<tr><td>${i}</td></tr>`
-}
 
 }
 
 for(let i=2000;i<=2999;i++){
 
-if(!usados.has(i)){
+if(!usados.has(i))
 camBody.innerHTML+=`<tr><td>${i}</td></tr>`
-}
 
 }
 
@@ -255,61 +322,36 @@ const q=e.target.value.toLowerCase()
 
 buscaBody.innerHTML=""
 
-Object.entries(banco).forEach(([cod,lista])=>{
-
-const nome=MUNICIPIOS.find(m=>m[1]==cod)[0]
-
-lista.filter(r=>
+const filtrado=rubricas.filter(r=>
 
 r.codigo_item.toString().includes(q) ||
 (r.descricao_item||"").toLowerCase().includes(q)
 
-).forEach(r=>{
+)
+
+filtrado.forEach(r=>{
 
 buscaBody.innerHTML+=`
 <tr>
-<td>${nome}</td>
 <td>${r.codigo_item}</td>
 <td>${r.descricao_item}</td>
-</tr>`
+<td>${r.tipo_item}</td>
+</tr>
+`
 
 })
 
-})
+resultCount.innerText=`${filtrado.length} resultado(s) encontrado(s)`
 
 })
-
-function comparar(){
-
-const cod=codigoCompare.value
-
-compareBody.innerHTML=""
-
-Object.entries(banco).forEach(([c,lista])=>{
-
-const nome=MUNICIPIOS.find(m=>m[1]==c)[0]
-
-const r=lista.find(x=>x.codigo_item==cod)
-
-if(r){
-
-compareBody.innerHTML+=`
-<tr>
-<td>${nome}</td>
-<td>${r.descricao_item}</td>
-</tr>`
-
-}
-
-})
-
-}
 
 function abrirTab(id){
 
 document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
+document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"))
 
 document.getElementById(id).classList.add("active")
+event.target.classList.add("active")
 
 }
 
