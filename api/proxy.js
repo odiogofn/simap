@@ -28,38 +28,44 @@ export default async function handler(req, res) {
         `&quantidade=${quantidade}` +
         `&deslocamento=${deslocamento}`;
 
-      const resp = await fetch(url, {
-        headers: {
-          "accept": "application/json"
-        }
-      });
+      const resp = await fetch(url);
 
       if (!resp.ok) {
         return res.status(502).json({
-          error: "Erro na API do TCE",
+          error: "Erro na API",
           status: resp.status
         });
       }
 
-      const dados = await resp.json();
+      const json = await resp.json();
 
-      if (!dados || dados.length === 0) break;
+      // tenta encontrar onde está o array
+      let dados = [];
+
+      if (Array.isArray(json)) dados = json;
+      else if (Array.isArray(json.data)) dados = json.data;
+      else if (Array.isArray(json.itens)) dados = json.itens;
+      else if (Array.isArray(json.resultados)) dados = json.resultados;
+
+      if (dados.length === 0) break;
 
       resultadoFinal.push(...dados);
 
       if (dados.length < quantidade) break;
 
       deslocamento += quantidade;
+
     }
 
-    res.status(200).json(resultadoFinal);
+    return res.status(200).json(resultadoFinal);
 
   } catch (e) {
 
-    res.status(500).json({
+    return res.status(500).json({
       error: "Erro interno",
       detalhe: String(e?.message || e)
     });
 
   }
+
 }
