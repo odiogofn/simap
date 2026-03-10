@@ -1,66 +1,65 @@
 export default async function handler(req, res) {
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+res.setHeader("Access-Control-Allow-Origin","*");
+res.setHeader("Access-Control-Allow-Methods","GET,OPTIONS");
+res.setHeader("Access-Control-Allow-Headers","Content-Type");
 
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "GET") return res.status(405).json({ error: "Use GET" });
+if(req.method==="OPTIONS") return res.status(204).end();
 
-  const codigo = req.query.codigo_municipio;
+const codigo=req.query.codigo_municipio;
 
-  if (!codigo) {
-    return res.status(400).json({ error: "codigo_municipio obrigatório" });
-  }
+if(!codigo){
+return res.status(400).json({error:"codigo_municipio obrigatório"});
+}
 
-  const quantidade = 100;
-  let deslocamento = 0;
+const quantidade=100;
 
-  let resultadoFinal = [];
+try{
 
-  try {
+const firstUrl=
+`https://api-dados-abertos.tce.ce.gov.br/itens_remuneratorios?codigo_municipio=${codigo}&quantidade=${quantidade}&deslocamento=0`;
 
-    while (true) {
+const firstResp=await fetch(firstUrl);
+const firstJson=await firstResp.json();
 
-      const url =
-        `https://api-dados-abertos.tce.ce.gov.br/itens_remuneratorios` +
-        `?codigo_municipio=${codigo}` +
-        `&quantidade=${quantidade}` +
-        `&deslocamento=${deslocamento}`;
+const total=firstJson.data.total;
+const dadosPrimeira=firstJson.data.data;
 
-      const resp = await fetch(url);
+const paginas=Math.ceil(total/quantidade);
 
-      if (!resp.ok) {
-        const txt = await resp.text();
-        return res.status(502).json({
-          error: "Erro na API",
-          detalhe: txt
-        });
-      }
+let promises=[];
 
-      const json = await resp.json();
+for(let i=1;i<paginas;i++){
 
-      const dados = json?.data?.data || [];
+const deslocamento=i*quantidade;
 
-      if (dados.length === 0) break;
+const url=
+`https://api-dados-abertos.tce.ce.gov.br/itens_remuneratorios?codigo_municipio=${codigo}&quantidade=${quantidade}&deslocamento=${deslocamento}`;
 
-      resultadoFinal.push(...dados);
+promises.push(fetch(url).then(r=>r.json()));
 
-      if (dados.length < quantidade) break;
+}
 
-      deslocamento += quantidade;
+const resultados=await Promise.all(promises);
 
-    }
+let todos=[...dadosPrimeira];
 
-    return res.status(200).json(resultadoFinal);
+for(const r of resultados){
 
-  } catch (e) {
+const arr=r?.data?.data||[];
+todos.push(...arr);
 
-    return res.status(500).json({
-      error: "Erro interno",
-      detalhe: String(e?.message || e)
-    });
+}
 
-  }
+return res.status(200).json(todos);
+
+}catch(e){
+
+return res.status(500).json({
+error:"Erro interno",
+detalhe:String(e?.message||e)
+});
+
+}
 
 }
