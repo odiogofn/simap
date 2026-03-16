@@ -38,10 +38,6 @@ padding:20px;
 margin-bottom:20px;
 }
 
-label{
-font-weight:600;
-}
-
 select,input{
 padding:10px;
 border:1px solid #ccc;
@@ -89,13 +85,11 @@ display:block;
 }
 
 .frame{
-
 border:1px solid #ddd;
 border-radius:6px;
 height:350px;
 overflow-y:auto;
 margin-top:15px;
-
 }
 
 table{
@@ -113,6 +107,16 @@ th{
 background:#f0f2f5;
 }
 
+.codigoLink{
+color:#1f6feb;
+cursor:pointer;
+font-weight:600;
+}
+
+.codigoLink:hover{
+text-decoration:underline;
+}
+
 .resultCount{
 margin-top:10px;
 font-size:13px;
@@ -122,6 +126,39 @@ color:#555;
 .status{
 margin-top:10px;
 font-size:14px;
+}
+
+.modal{
+
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.5);
+display:none;
+align-items:center;
+justify-content:center;
+
+}
+
+.modalContent{
+
+background:white;
+width:600px;
+max-height:80vh;
+overflow:auto;
+padding:25px;
+border-radius:8px;
+text-align:left;
+
+}
+
+.closeBtn{
+float:right;
+cursor:pointer;
+font-weight:bold;
+font-size:18px;
 }
 
 </style>
@@ -142,9 +179,7 @@ Auditor de Rubricas • Tribunal de Contas do Estado do Ceará
 
 <select id="municipio"></select>
 
-<button onclick="carregarMunicipio()">
-Carregar Rubricas
-</button>
+<button onclick="carregarMunicipio()">Carregar Rubricas</button>
 
 <div id="status" class="status"></div>
 
@@ -155,9 +190,7 @@ Carregar Rubricas
 <div class="tabs">
 
 <button onclick="abrirTab('pref')" class="active">Prefeitura</button>
-
 <button onclick="abrirTab('cam')">Câmara</button>
-
 <button onclick="abrirTab('busca')">Buscar</button>
 
 </div>
@@ -214,11 +247,7 @@ Carregar Rubricas
 
 <div id="busca" class="tab">
 
-<input
-id="campoBusca"
-placeholder="Digite código ou descrição"
-style="width:320px"
->
+<input id="campoBusca" placeholder="Digite código ou descrição" style="width:320px">
 
 <div id="resultCount" class="resultCount"></div>
 
@@ -246,12 +275,28 @@ style="width:320px"
 
 </div>
 
+<!-- MODAL DETALHES -->
+
+<div id="modal" class="modal">
+
+<div class="modalContent">
+
+<span class="closeBtn" onclick="fecharModal()">✖</span>
+
+<h3>Detalhes da Rubrica</h3>
+
+<div id="detalhes"></div>
+
+</div>
+
+</div>
+
 <script>
 
 const API="/api/proxy"
 
-  const MUNICIPIOS = [
-    ["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
+const MUNICIPIOS=[
+["ABAIARA","002"],["ACARAPE","003"],["ACARAU","004"],["ACOPIARA","005"],["AIUABA","006"],
     ["ALCANTARAS","007"],["ALTANEIRA","008"],["ALTO SANTO","009"],["AMONTADA","010"],["ANTONINA DO NORTE","011"],
     ["APUIARES","012"],["AQUIRAZ","013"],["ARACATI","014"],["ARACOIABA","015"],["ARARIPE","016"],
     ["ARATUBA","017"],["ARNEIROZ","018"],["ASSARE","019"],["AURORA","020"],["BAIXIO","021"],
@@ -359,7 +404,7 @@ filtrado.forEach(r=>{
 
 buscaBody.innerHTML+=`
 <tr>
-<td>${r.codigo_item}</td>
+<td class="codigoLink" onclick="verDetalhes(${r.codigo_item})">${r.codigo_item}</td>
 <td>${r.descricao_item}</td>
 <td>${r.tipo_item}</td>
 </tr>
@@ -370,6 +415,30 @@ buscaBody.innerHTML+=`
 resultCount.innerText=`${filtrado.length} resultado(s) encontrado(s)`
 
 })
+
+function verDetalhes(codigo){
+
+const r=rubricas.find(x=>x.codigo_item==codigo)
+
+let html=""
+
+Object.entries(r).forEach(([k,v])=>{
+
+html+=`<p><b>${k}</b>: ${v}</p>`
+
+})
+
+detalhes.innerHTML=html
+
+modal.style.display="flex"
+
+}
+
+function fecharModal(){
+
+modal.style.display="none"
+
+}
 
 function abrirTab(id){
 
