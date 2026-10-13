@@ -1,64 +1,6 @@
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") return res.status(204).end();
-
-  const codigo = String(req.query.codigo_municipio || "").trim();
-
-  if (!codigo) {
-    return res.status(400).json({ error: "codigo_municipio obrigatório" });
-  }
-
-  const count = 1000;
-  const baseUrl = "https://api-dados-abertos.tce.ce.gov.br/sim/itens_remuneratorios";
-
-  const montarUrl = (startIndex = 0) => {
-    const params = new URLSearchParams();
-    params.set("codigo_municipio", codigo.padStart(3, "0"));
-    params.set("$format", "json");
-    params.set("$count", String(count));
-    params.set("$start_index", String(startIndex));
-    return `${baseUrl}?${params.toString()}`;
-  };
-
-  try {
-    let todos = [];
-    let startIndex = 0;
-    let pagina = 0;
-    const limiteSegurancaPaginas = 500;
-
-    while (pagina < limiteSegurancaPaginas) {
-      const url = montarUrl(startIndex);
-      const resp = await fetch(url);
-
-      if (!resp.ok) {
-        const texto = await resp.text().catch(() => "");
-        return res.status(resp.status).json({
-          error: "Erro ao consultar API do TCE",
-          status: resp.status,
-          url,
-          detalhe: texto.slice(0, 500)
-        });
-      }
-
-      const json = await resp.json();
-      const elementos = Array.isArray(json?.elements) ? json.elements : [];
-
-      todos.push(...elementos);
-
-      if (elementos.length < count) break;
-
-      pagina += 1;
-      startIndex += count;
-    }
-
-    return res.status(200).json(todos);
-  } catch (e) {
-    return res.status(500).json({
-      error: "Erro interno",
-      detalhe: String(e?.message || e)
-    });
-  }
+export default async function handler(req,res){
+ res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Methods','GET,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type');res.setHeader('Cache-Control','no-store');if(req.method==='OPTIONS')return res.status(204).end();if(req.method!=='GET')return res.status(405).json({error:'Método não permitido'});
+ const codigo=String(req.query.codigo_municipio||'').trim();if(!/^\d{1,3}$/.test(codigo))return res.status(400).json({error:'Código do município inválido'});
+ const count=1000,base='https://api-dados-abertos.tce.ce.gov.br/sim/itens_remuneratorios',maxPages=500;let todos=[];
+ try{for(let pagina=0;pagina<maxPages;pagina++){const params=new URLSearchParams({codigo_municipio:codigo.padStart(3,'0'),'$format':'json','$count':String(count),'$start_index':String(pagina*count)});const resposta=await fetch(`${base}?${params}`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(25000)});if(!resposta.ok)return res.status(502).json({error:`API do TCE retornou HTTP ${resposta.status}`});const json=await resposta.json();if(!Array.isArray(json?.elements))return res.status(502).json({error:'Resposta inesperada da API do TCE'});todos.push(...json.elements);if(json.elements.length<count)return res.status(200).json(todos)}return res.status(502).json({error:'Limite de paginação atingido; dados incompletos. Nenhum código pode ser considerado livre nesta consulta.'})}catch(e){return res.status(502).json({error:'Falha ao consultar a API do TCE',detalhe:String(e?.message||e)})}
 }
