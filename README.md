@@ -19,3 +19,6 @@ Importe este repositório na Vercel (framework: Other). A função `api/proxy.js
 ## Observações
 
 O cache fica somente no navegador/dispositivo e pode ser apagado pelo próprio navegador. Em caso de falha na atualização, dados anteriores podem ser exibidos com aviso de validade. O proxy rejeita paginação incompleta. A contagem considera apenas as duas faixas indicadas; códigos fora delas permanecem pesquisáveis na aba Buscar.
+
+## Exportação completa (nova aba)
+A aba **Exportar itens** consulta `/api/exportar` com `$count=1000` e índices 0, 100, 200... até a primeira página com menos de 1000 registros. As páginas se sobrepõem; registros idênticos são deduplicados, sem confundir códigos iguais com registros de conteúdos diferentes. A exportação é feita no navegador, independente do cache de consultas. São gerados CSV (UTF-8 BOM, separado por ponto e vírgula, compatível com Excel brasileiro) e XML consolidado. Em caso de erro ou cancelamento, os downloads ficam bloqueados para não apresentar arquivos parciais como completos. Para conjuntos extremamente grandes, o navegador pode exigir memória adicional.

@@ -19,3 +19,63 @@ async function consultar(forcar=false){if(carregando)return;const codigo=sel.val
 $('consultar').addEventListener('click',()=>consultar());$('atualizar').addEventListener('click',()=>consultar(true));$('limpar').addEventListener('click',async()=>{const all=confirm('OK: limpar todo o cache local. Cancelar: escolher limpar apenas o município atual?');if(!all&&!confirm(`Limpar somente o cache de ${sel.selectedOptions[0].textContent}?`))return;try{await operacao(all?'limpar':'apagar',sel.value);setStatus(all?'Todo o cache deste navegador foi limpo.':'Cache do município selecionado removido.','ok');$('cacheInfo').textContent='';}catch(e){setStatus('Não foi possível limpar o cache: '+e.message,'error')}});
 sel.addEventListener('change',()=>{token++;rubricas=[];atual=null;livresPref=[];livresCam=[];for(const id of ['total','livres','ocupados','prefLivre','prefOcup','camLivre','camOcup'])$(id).textContent='—';$('percentual').textContent='Aguardando consulta';$('cacheInfo').textContent='';$('prefCount').textContent='—';$('camCount').textContent='—';$('resultCount').textContent='Consulte o município selecionado.';['prefBody','camBody','buscaBody'].forEach(id=>$(id).replaceChildren());setStatus('Município alterado. Clique em Consultar para carregar seus dados.')});
 document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{aba=btn.dataset.tab;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b===btn));document.querySelectorAll('.tabPane').forEach(p=>p.classList.toggle('active',p.id===aba));renderizar()}));$('campoBusca').addEventListener('input',()=>{if(atual)tabelaBusca()});$('fecharModal').addEventListener('click',()=>$('modal').close());$('copiar').addEventListener('click',async()=>{if(!atual){setStatus('Consulte um município antes de copiar.','error');return}const lista=aba==='cam'?livresCam:aba==='pref'?livresPref:[...livresPref,...livresCam];const conteudo=`${sel.selectedOptions[0].textContent} — códigos livres (${aba==='cam'?'Câmara':aba==='pref'?'Prefeitura':'Geral'})\n${lista.join(', ')}`;try{await navigator.clipboard.writeText(conteudo);setStatus(`${format(lista.length)} códigos livres copiados.`,'ok')}catch{setStatus('Não foi possível copiar automaticamente. Verifique as permissões do navegador.','error')}});
+
+// Exportação independente da consulta de códigos livres e do cache de 24 horas.
+let exportItems=[], exportCodigo=null, exportController=null, exportando=false;
+const exportStatus=(mensagem,tipo='')=>{const el=$('exportStatus');el.textContent=mensagem;el.className='notice '+tipo};
+function exportButtons(){ $('iniciarExport').disabled=exportando;$('cancelarExport').disabled=!exportando;const pronto=!exportando&&exportCodigo===sel.value&&exportItems.length>0;$('baixarCsv').disabled=!pronto;$('baixarXml').disabled=!pronto;}
+function invalidarExport(){if(exportController)exportController.abort();exportController=null;exportando=false;exportItems=[];exportCodigo=null;$('exportProgress').value=0;$('exportDetalhe').textContent='Nenhum registro coletado.';exportStatus('Selecione um município e inicie a coleta.');exportButtons()}
+sel.addEventListener('change',invalidarExport);
+const esperar=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function iniciarExport(){
+ if(exportando)return;
+ exportItems=[];exportCodigo=null;exportando=true;const codigo=sel.value,nome=sel.selectedOptions[0].textContent,controller=new AbortController();exportController=controller;
+ const progress=$('exportProgress');progress.removeAttribute('value');exportButtons();
+ const vistos=new Set();let inicio=0,paginas=0,terminou=false;
+ try{
+  // count=1000 e incremento=100: as páginas se sobrepõem, por isso a deduplicação.
+  while(paginas<10001){
+   if(controller.signal.aborted)throw new DOMException('Coleta cancelada','AbortError');
+   exportStatus(`Consultando ${nome} · start_index=${inicio} · ${format(exportItems.length)} registros únicos...`);
+   let dados;
+   for(let tentativa=0;tentativa<3;tentativa++){
+    try{
+     const r=await fetch(`/api/exportar?codigo_municipio=${encodeURIComponent(codigo)}&start_index=${inicio}`,{signal:controller.signal,cache:'no-store'});
+     dados=await r.json().catch(()=>null);
+     if(!r.ok)throw Error(dados?.error||`HTTP ${r.status}`);
+     if(!Array.isArray(dados?.elements))throw Error('Resposta sem lista de registros');
+     break;
+    }catch(e){if(controller.signal.aborted)throw e;if(tentativa===2)throw e;await esperar(700*(tentativa+1))}
+   }
+   const itens=dados.elements;let novos=0;
+   for(const item of itens){
+    if(!item||typeof item!=='object'||!('codigo_item' in item))throw Error('Registro inválido retornado pelo TCE');
+    // Não deduplicar somente por codigo_item: podem existir múltiplos registros para o mesmo código.
+    const chave=JSON.stringify(Object.keys(item).sort().map(k=>[k,item[k]]));
+    if(!vistos.has(chave)){vistos.add(chave);exportItems.push(item);novos++}
+   }
+   paginas++;$('exportDetalhe').textContent=`${format(exportItems.length)} registros únicos · ${paginas} páginas · índice ${inicio} · ${novos} novos nesta página`;
+   if(itens.length<1000){terminou=true;break}
+   // Se uma página completa não acrescentou nenhum registro, é sinal de repetição da API.
+   if(novos===0)throw Error('A API repetiu uma página inteira. Coleta interrompida para evitar arquivo incompleto.');
+   inicio+=100;
+  }
+  if(!terminou)throw Error('Limite de segurança da paginação atingido.');
+  if(controller.signal.aborted)throw new DOMException('Coleta cancelada','AbortError');
+  exportCodigo=codigo;progress.value=100;
+  exportStatus(`Coleta concluída: ${format(exportItems.length)} registros únicos de ${nome}. Arquivos disponíveis para download.`,'ok');
+ }catch(e){exportCodigo=null;progress.value=0;exportStatus(controller.signal.aborted?'Coleta cancelada. Inicie novamente para exportar.':`Falha: ${e.message}. Download bloqueado para evitar arquivos incompletos.`,'error')}
+ finally{if(exportController===controller)exportController=null;exportando=false;exportButtons()}
+}
+$('iniciarExport').addEventListener('click',iniciarExport);
+$('cancelarExport').addEventListener('click',()=>exportController?.abort());
+const CAMPOS=['codigo_municipio','codigo_item','tipo_item','descricao_item','codigo_amparo_legal','numero_amparo_legal','data_amparo_legal','data_publicacao','numero_decreto','data_decreto','data_publicacao_decreto','tipo_classificacao','status_extinto','data_referencia_doc'];
+function colunas(){return [...new Set([...CAMPOS,...exportItems.flatMap(item=>Object.keys(item))])]}
+function csvValor(v){const s=v==null?'':typeof v==='object'?JSON.stringify(v):String(v);return '"'+s.replace(/"/g,'""')+'"'}
+function criarCsv(){const campos=colunas();return '\uFEFF'+[campos.map(csvValor).join(';'),...exportItems.map(r=>campos.map(k=>csvValor(r[k])).join(';'))].join('\r\n')}
+function xmlEscape(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function criarXml(){const campos=colunas();const linhas=['<?xml version="1.0" encoding="UTF-8"?>','<denodo:view xmlns="http://www.denodo.com/restful/vdb_sim/views/dv_itens_remuneratorios" xmlns:denodo="http://www.denodo.com/restful" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="dv_itens_remuneratorios">'];for(const item of exportItems){linhas.push('  <dv_itens_remuneratorios>');for(const k of campos){if(!/^[A-Za-z_][\w.-]*$/.test(k))continue;const v=item[k];linhas.push(v==null?`    <${k} xsi:nil="true"/>`:`    <${k}>${xmlEscape(typeof v==='object'?JSON.stringify(v):v)}</${k}>`)}linhas.push('  </dv_itens_remuneratorios>')}linhas.push('</denodo:view>');return linhas.join('\n')}
+function baixarExport(tipo){if(exportando||exportCodigo!==sel.value||!exportItems.length)return;const conteudo=tipo==='csv'?criarCsv():criarXml(),mime=tipo==='csv'?'text/csv;charset=utf-8':'application/xml;charset=utf-8',blob=new Blob([conteudo],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`itens_remuneratorios_municipio_${exportCodigo}.${tipo}`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
+$('baixarCsv').addEventListener('click',()=>baixarExport('csv'));
+$('baixarXml').addEventListener('click',()=>baixarExport('xml'));
+exportButtons();
